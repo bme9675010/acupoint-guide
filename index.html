@@ -158,11 +158,12 @@
         <div id="closeupSvgContainer" class="closeup-svg-wrap"></div>
       </div>
 
-      <!-- 三大核心分頁 -->
+      <!-- 四大核心分頁 -->
       <div class="detail-tabs" role="tablist">
-        <button type="button" class="detail-tab-btn active" data-tab="tab-locate">① 精準找穴（三步定位）</button>
-        <button type="button" class="detail-tab-btn" data-tab="tab-massage">② 按揉計時＆體質紀錄</button>
-        <button type="button" class="detail-tab-btn" data-tab="tab-benefits">③ 功效與配穴</button>
+        <button type="button" class="detail-tab-btn active" data-tab="tab-locate">① 找穴定位</button>
+        <button type="button" class="detail-tab-btn" data-tab="tab-massage">② 跟練＆體質</button>
+        <button type="button" class="detail-tab-btn" data-tab="tab-benefits">③ 功效配穴</button>
+        <button type="button" class="detail-tab-btn" data-tab="tab-diet">🍵 本草食療</button>
       </div>
 
       <!-- 分頁 1：精準找穴 -->
@@ -232,20 +233,20 @@
 
         <!-- 🩺 按後痛感體質自我檢測紀錄 -->
         <div class="info-section pain-log-section" style="margin-top: 12px;">
-          <h4>🩺 按完感覺如何？（點擊紀錄「通則不痛」經絡體質）</h4>
+          <h4>🩺 按完感覺如何？（點擊紀錄「通則不痛」經絡體質＋自動調配食療方）</h4>
           <div class="pain-btn-group">
-            <button type="button" class="pain-log-btn" data-feeling="smooth">
+            <button type="button" class="pain-log-btn" data-pain="smooth" data-feeling="smooth">
               😌 微痠舒暢<br/><small>氣血通暢</small>
             </button>
-            <button type="button" class="pain-log-btn" data-feeling="sharp">
+            <button type="button" class="pain-log-btn" data-pain="sharp" data-feeling="sharp">
               ⚡ 劇烈痠痛<br/><small>氣滯/火旺</small>
             </button>
-            <button type="button" class="pain-log-btn" data-feeling="empty">
+            <button type="button" class="pain-log-btn" data-pain="empty" data-feeling="empty">
               ☁️ 空軟無力<br/><small>氣血偏虛</small>
             </button>
           </div>
           <p id="constitutionInsight" class="constitution-insight">
-            尚未記錄今日按壓體感。按完穴位後點選上方按鈕，系統將自動為您分析近期經絡淤堵趨勢。
+            尚未記錄今日按壓體感。按完穴位後點選上方按鈕，系統將自動為您分析近期經絡淤堵趨勢與對應食療茶飲。
           </p>
         </div>
       </div>
@@ -265,6 +266,51 @@
         <div class="info-section">
           <h4>☯️ 黃金配穴處方（1 + 1 &gt; 2）</h4>
           <div id="pairingsContainer"></div>
+        </div>
+      </div>
+
+      <!-- 分頁 4：🍵 本草食療（辦公室 3 分鐘茶飲 × 超商外食 × 痛感體質動態調方 × 按後忌口） -->
+      <div id="tab-diet" class="tab-pane">
+        <!-- 1. 辦公室 3 分鐘本草茶飲 -->
+        <div class="info-section diet-tea-card">
+          <div class="diet-card-header">
+            <span class="diet-badge">🍵 3 分鐘本草茶飲</span>
+            <h4 id="dietTeaName" class="diet-tea-title">--</h4>
+          </div>
+          <p id="dietIngredients" class="diet-ingredients"></p>
+          <p id="dietEffect" class="diet-effect"></p>
+          <div id="dietPregnancyNote" class="diet-pregnancy-box" style="display:none;"></div>
+        </div>
+
+        <!-- 2. 7-11 / 全家超商外食族 1 分鐘救急首選 -->
+        <div class="info-section diet-cvs-card">
+          <h4>🏪 超商 / 外食族 1 分鐘救急替代方案</h4>
+          <p id="dietCvsOption" class="diet-cvs-text"></p>
+        </div>
+
+        <!-- 3. 結合「按後痛感體質」動態調配食方 -->
+        <div class="info-section diet-constitution-card">
+          <h4>🩺 依「按後手感體質」動態換方（點擊可切換體感）</h4>
+          <div class="diet-pain-tabs">
+            <button type="button" class="diet-pain-tab pain-log-btn" data-pain="sharp">⚡ 按之劇痛（實證/氣滯）</button>
+            <button type="button" class="diet-pain-tab pain-log-btn" data-pain="empty">☁️ 按之空軟（虛證/氣虛）</button>
+            <button type="button" class="diet-pain-tab pain-log-btn" data-pain="smooth">😌 微痠舒暢（日常平養）</button>
+          </div>
+          <div id="dietByPainList" class="diet-by-pain-list"></div>
+        </div>
+
+        <!-- 4. 🚫 按後 1 小時飲食雷區（忌口提醒） -->
+        <div class="info-section diet-avoid-card">
+          <h4>🚫 按後 1 小時飲食雷區（忌口提醒）</h4>
+          <p id="dietAvoidText" class="diet-avoid-text"></p>
+        </div>
+
+        <!-- 5. ⏳ 當下時辰子午流注當令飲品 -->
+        <div class="info-section diet-ziwu-card">
+          <h4 id="dietZiwuTitle">⏳ 當下時辰養生飲</h4>
+          <p id="dietZiwuDrink" style="font-size: 0.85rem; color: var(--herb-deep); font-weight: 600; margin-bottom: 4px;"></p>
+          <p id="dietZiwuCvs" style="font-size: 0.82rem; color: var(--ink-dark); margin-bottom: 4px;"></p>
+          <p id="dietZiwuAvoid" style="font-size: 0.8rem; color: var(--cinnabar);"></p>
         </div>
       </div>
     </aside>

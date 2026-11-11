@@ -1,4 +1,4 @@
-import { ACUPOINTS, SYMPTOM_PRESETS, ZIWU_LIUZHU } from './data/acupoints.js';
+import { ACUPOINTS, SYMPTOM_PRESETS, ZIWU_LIUZHU, DIETARY_THERAPY, ZIWU_DIET } from './data/acupoints.js';
 import { getCloseupSvgMarkup } from './data/closeupDiagrams.js';
 import { AR_SUPPORTED_POINTS, openArModal, initArControls } from './arFinder.js';
 
@@ -760,6 +760,11 @@ function updatePainLogAndConstitutionUI() {
       empty: '☁️ 空軟無力（氣血偏虛，宜用指腹輕柔久按補氣）'
     };
     lines.push(`<strong>本穴最新手感：</strong>${labelMap[latestForPoint.painType]}`);
+
+    const diet = DIETARY_THERAPY[state.selectedPointId];
+    if (diet && diet.byPainType[latestForPoint.painType]) {
+      lines.push(`🍵 <strong>專屬對證食療：</strong>${diet.byPainType[latestForPoint.painType]}`);
+    }
   }
 
   if (topSharp) {
@@ -772,8 +777,81 @@ function updatePainLogAndConstitutionUI() {
     lines.push(`✨ <strong>整體經絡狀態：</strong>近期打卡 ${smoothCount} 次皆為「微痠舒暢」，代表周身氣血運行相當平順！`);
   }
 
+  lines.push(`<button type="button" id="jumpToDietTabBtn" class="pairing-Jump-btn" style="margin-top:6px;">🍵 查看本穴 3 分鐘茶飲＆超商外食清單 →</button>`);
+
   insightEl.innerHTML = lines.join('<br/>');
   insightEl.style.display = 'block';
+
+  document.getElementById('jumpToDietTabBtn')?.addEventListener('click', () => {
+    switchDetailTab('tab-diet');
+  });
+}
+
+// 渲染分頁 4：🍵 本草食療專區
+function renderDietaryTherapy(point) {
+  const diet = DIETARY_THERAPY[point.id];
+  if (!diet) return;
+
+  const teaNameEl = document.getElementById('dietTeaName');
+  const ingEl = document.getElementById('dietIngredients');
+  const effEl = document.getElementById('dietEffect');
+  const pregBox = document.getElementById('dietPregnancyNote');
+  const cvsEl = document.getElementById('dietCvsOption');
+  const byPainEl = document.getElementById('dietByPainList');
+  const avoidEl = document.getElementById('dietAvoidText');
+
+  if (teaNameEl) teaNameEl.textContent = diet.teaName;
+  if (ingEl) ingEl.textContent = `🫖 沖泡配方：${diet.ingredients}`;
+  if (effEl) effEl.textContent = `✨ 協同功效：${diet.effect}`;
+  if (cvsEl) cvsEl.textContent = diet.cvsOption;
+  if (avoidEl) avoidEl.textContent = diet.avoid;
+
+  if (pregBox) {
+    if (state.pregnancySafeMode || point.contraindications.pregnancyForbidden) {
+      pregBox.style.display = 'block';
+      pregBox.textContent = diet.pregnancySafeAlt;
+    } else {
+      pregBox.style.display = 'none';
+    }
+  }
+
+  // 取得該穴位最新按後痛感紀錄（預設高亮 smooth 或最新打卡項目）
+  const pointLogs = state.painLogs.filter((item) => item.pointId === point.id);
+  const activePainType = pointLogs.length > 0 ? pointLogs[pointLogs.length - 1].painType : null;
+
+  if (byPainEl && diet.byPainType) {
+    const order = ['sharp', 'empty', 'smooth'];
+    byPainEl.innerHTML = order
+      .map((type) => {
+        const isMatched = activePainType === type;
+        return `
+          <div class="diet-by-pain-item ${isMatched ? 'matched' : ''}" data-pain-item="${type}">
+            ${isMatched ? '<span class="diet-badge" style="margin-right:6px;">✓ 您的最新打卡體質</span>' : ''}
+            ${diet.byPainType[type]}
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  // 更新當下時辰子午流注當令飲品
+  const hour = new Date().getHours();
+  const currentZiwu = ZIWU_LIUZHU.find((item) => {
+    if (item.startHour === 23) return hour >= 23 || hour < 1;
+    return hour >= item.startHour && hour < item.endHour;
+  }) || ZIWU_LIUZHU[0];
+  const ziwuDiet = ZIWU_DIET[currentZiwu.zhi];
+
+  if (ziwuDiet) {
+    const zTitle = document.getElementById('dietZiwuTitle');
+    const zDrink = document.getElementById('dietZiwuDrink');
+    const zCvs = document.getElementById('dietZiwuCvs');
+    const zAvoid = document.getElementById('dietZiwuAvoid');
+    if (zTitle) zTitle.textContent = `⏳ 當下【${currentZiwu.zhi}・${currentZiwu.meridian}】當令養生飲`;
+    if (zDrink) zDrink.textContent = `🍵 當令宜飲：${ziwuDiet.drink}`;
+    if (zCvs) zCvs.textContent = `🏪 超商可買：${ziwuDiet.cvs}`;
+    if (zAvoid) zAvoid.textContent = `⚠️ 時辰忌口：${ziwuDiet.avoid}`;
+  }
 }
 
 function recordPainSensation(painType) {
@@ -790,6 +868,7 @@ function recordPainSensation(painType) {
 
   savePainLogs();
   updatePainLogAndConstitutionUI();
+  renderDietaryTherapy(point);
 }
 
 // 更新右側詳情面板內容
@@ -802,6 +881,7 @@ function renderInspector(point) {
 
   updateFavButtonUI(point.id);
   updatePainLogAndConstitutionUI();
+  renderDietaryTherapy(point);
 
   const cautionEl = document.getElementById('cautionBanner');
   if (state.pregnancySafeMode && point.contraindications.pregnancyForbidden) {
@@ -1286,15 +1366,18 @@ function applyColloquialSearch(rawQuery) {
     }
   });
 
-  // 2. 比對穴位名稱、代碼、拼音、經絡、中醫功效與適應症
+  // 2. 比對穴位名稱、代碼、拼音、經絡、中醫功效、適應症與本草食療茶飲食材
   ACUPOINTS.forEach((pt) => {
+    const diet = DIETARY_THERAPY[pt.id];
+    const dietText = diet ? `${diet.teaName} ${diet.ingredients} ${diet.cvsOption}` : '';
     const haystack = [
       pt.name,
       pt.id,
       pt.pinyin,
       pt.meridian,
       ...pt.benefits.symptoms,
-      ...pt.benefits.tcmFunctions
+      ...pt.benefits.tcmFunctions,
+      dietText
     ].join(' ').toLowerCase();
 
     if (haystack.includes(q)) {
@@ -1374,8 +1457,11 @@ function initZiwuLiuzhu() {
     .filter(Boolean)
     .join('、');
 
+  const ziwuDiet = ZIWU_DIET[currentZiwu.zhi];
+  const shortDrink = ziwuDiet ? `｜🍵 ${ziwuDiet.drink.split('（')[0]}` : '';
+
   badge.textContent = `${currentZiwu.zhi}・${currentZiwu.meridian}`;
-  text.textContent = `當令養${currentZiwu.organ}｜宜按：${recNames}`;
+  text.textContent = `當令養${currentZiwu.organ}｜宜按：${recNames}${shortDrink}`;
 
   banner.addEventListener('click', () => {
     state.activePresetId = null;
