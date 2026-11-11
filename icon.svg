@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#F6F2E9"/>
+  <rect x="36" y="36" width="440" height="440" rx="88" fill="#B83D2E" stroke="#8F281B" stroke-width="12"/>
+  <rect x="62" y="62" width="388" height="388" rx="68" fill="none" stroke="#FAF7F0" stroke-width="6" opacity="0.65"/>
+  <g fill="#FAF7F0" font-family="'Noto Serif TC', 'Songti TC', serif" font-weight="700" font-size="148" text-anchor="middle">
+    <text x="175" y="225">本</text>
+    <text x="337" y="225">草</text>
+    <text x="175" y="390">尋</text>
+    <text x="337" y="390">穴</text>
+  </g>
+</svg>

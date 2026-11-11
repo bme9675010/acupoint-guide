@@ -9,6 +9,8 @@
   <meta name="theme-color" content="#F6F2E9" />
   <title>本草尋穴｜新中式經絡穴道按導圖鑑</title>
   <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet" />
@@ -21,7 +23,7 @@
       <div class="seal-stamp" aria-hidden="true">本草<br/>尋穴</div>
       <div>
         <h1 class="brand-title">本草尋穴・經絡按導</h1>
-        <p class="brand-subtitle">觀骨度・識經絡・聽缽音呼吸按揉</p>
+        <p class="brand-subtitle">觀骨度・識經絡・AR定格尋穴・頌缽呼吸按揉</p>
       </div>
     </div>
 
@@ -29,6 +31,12 @@
       <button type="button" id="headerArBtn" class="header-ar-btn">
         📷 AR 鏡頭自拍找穴
       </button>
+
+      <label class="pregnancy-safe-toggle" title="開啟後自動標示並於處方連播中跳過合谷、三陰交、肩井、崑崙四大孕期禁穴">
+        <input type="checkbox" id="pregnancySafeCheckbox" />
+        <span>🤰 孕期安全鎖</span>
+      </label>
+
       <div id="ziwuBanner" class="ziwu-banner" title="點擊篩選當令經絡推薦穴位">
         <span id="ziwuBadge" class="ziwu-badge">時辰載入中</span>
         <span id="ziwuText" class="ziwu-text">正在推算當下子午流注經絡…</span>
@@ -36,9 +44,28 @@
     </div>
   </header>
 
-  <!-- 養生處方籤與症狀快篩列 -->
+  <!-- 智慧搜尋框、養生處方籤與症狀快篩列 -->
   <section class="filter-bar">
+    <!-- 🔍 白話口語＆模糊智慧搜尋列 -->
+    <div class="search-bar-wrap">
+      <div class="search-input-box">
+        <span class="search-icon">🔍</span>
+        <input
+          type="search"
+          id="symptomSearchInput"
+          class="symptom-search-input"
+          placeholder="輸入白話痛點或穴位（例：宿醉、打嗝、落枕、水腫、媽媽手、乾眼、合谷…）"
+          autocomplete="off"
+        />
+        <button type="button" id="clearSearchBtn" class="clear-search-btn" style="display: none;">✕</button>
+      </div>
+      <div id="streakBadge" class="streak-badge" title="您的本機經絡按導打卡紀錄">
+        🔥 已按導 <strong id="totalLogsCount">0</strong> 次
+      </div>
+    </div>
+
     <div id="presetRow" class="preset-row" aria-label="常見症狀養生處方籤"></div>
+
     <!-- 🎵 處方連續自動跟練播放列（點選處方籤時展開） -->
     <div id="playlistBanner" class="playlist-banner" style="display: none;">
       <div class="playlist-info">
@@ -51,6 +78,7 @@
         </button>
       </div>
     </div>
+
     <div id="symptomTagsRow" class="symptom-tags-row" aria-label="單一症狀快篩"></div>
   </section>
 
@@ -69,7 +97,7 @@
 
         <div class="canvas-right-controls">
           <button type="button" id="zoomToggleBtn" class="zoom-toggle-btn" title="切換局部放大聚焦與全身總覽">
-            🔍 局部放大聚焦：開
+            🔍 局部放大：開
           </button>
           <label class="xray-control" title="調整骨骼地標透視度，幫助對準骨縫找穴">
             <span>🦴 骨度</span>
@@ -88,7 +116,7 @@
         <div class="stage-legend">
           <div class="legend-items">
             <span><i class="legend-dot" style="background: var(--cinnabar);"></i>當前選中</span>
-            <span><i class="legend-dot" style="background: var(--amber-gold);"></i>處方/症狀對應</span>
+            <span><i class="legend-dot" style="background: var(--amber-gold);"></i>處方/搜尋命中</span>
             <span><i class="legend-dot" style="background: var(--herb-deep);"></i>常規穴位</span>
           </div>
         </div>
@@ -109,14 +137,19 @@
             <span id="pointAttr">原穴・四總穴</span>
           </div>
         </div>
-        <button type="button" id="inspectorArBtn" class="inspector-ar-btn">
-          📷 AR 實景對穴
-        </button>
+        <div class="inspector-header-btns">
+          <button type="button" id="favPointBtn" class="fav-point-btn" title="加入我的收藏專屬處方">
+            ☆ 收藏
+          </button>
+          <button type="button" id="inspectorArBtn" class="inspector-ar-btn">
+            📷 AR 實景對穴
+          </button>
+        </div>
       </div>
 
       <div id="cautionBanner" class="caution-banner"></div>
 
-      <!-- 🔬 常駐微距解剖與手指比例尺圖解（一眼看懂怎麼量、往哪個骨縫壓） -->
+      <!-- 🔬 常駐微距解剖與手指比例尺圖解 -->
       <div class="closeup-card">
         <div class="closeup-card-header">
           <span>🔬 1:1 局部骨度與手指量尺特寫圖</span>
@@ -125,14 +158,14 @@
         <div id="closeupSvgContainer" class="closeup-svg-wrap"></div>
       </div>
 
-      <!-- 三大核心分頁：預設先看「① 精準找穴(三步摸骨)」，找準了再點「② 按摩跟練」 -->
+      <!-- 三大核心分頁 -->
       <div class="detail-tabs" role="tablist">
         <button type="button" class="detail-tab-btn active" data-tab="tab-locate">① 精準找穴（三步定位）</button>
-        <button type="button" class="detail-tab-btn" data-tab="tab-massage">② 如何按揉＆計時器</button>
+        <button type="button" class="detail-tab-btn" data-tab="tab-massage">② 按揉計時＆體質紀錄</button>
         <button type="button" class="detail-tab-btn" data-tab="tab-benefits">③ 功效與配穴</button>
       </div>
 
-      <!-- 分頁 1：精準找穴（三步摸骨拆解 + 按對/按偏自我驗證 + 同身寸） -->
+      <!-- 分頁 1：精準找穴 -->
       <div id="tab-locate" class="tab-pane active">
         <div class="info-section">
           <h4>🧭 零失誤「三步摸骨定位法」</h4>
@@ -156,7 +189,7 @@
         </div>
       </div>
 
-      <!-- 分頁 2：按摩手法與頌缽呼吸跟練計時器 -->
+      <!-- 分頁 2：按摩手法、頌缽呼吸跟練計時器、按後痛感體質紀錄 -->
       <div id="tab-massage" class="tab-pane">
         <div class="info-section">
           <h4>👐 指法與施力方向</h4>
@@ -169,14 +202,17 @@
           <p id="guideSensation"></p>
         </div>
 
-        <!-- 專為 iPhone 最佳化的頌缽音頻 + 語音 + 呼吸光圈跟練器 -->
+        <!-- 專為 iPhone 最佳化的頌缽音頻 + 語音 + 螢幕常亮防休眠 + 呼吸光圈跟練器 -->
         <div class="timer-box">
           <div class="timer-top-row">
             <span id="timerRhythmMeta">按壓 5 秒・放鬆 2 秒</span>
-            <label class="sound-toggle-label">
-              <input type="checkbox" id="soundToggle" checked />
-              <span>🔔 頌缽音與語音導引</span>
-            </label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <span id="wakeLockBadge" class="wakelock-badge" style="display:none;">🔆 螢幕常亮中</span>
+              <label class="sound-toggle-label">
+                <input type="checkbox" id="soundToggle" checked />
+                <span>🔔 頌缽與語音</span>
+              </label>
+            </div>
           </div>
 
           <div class="breathing-orb-wrap">
@@ -184,7 +220,7 @@
             <div class="orb-center-text">
               <span id="orbPhase" class="orb-phase">準備開始</span>
               <span id="orbSeconds" class="orb-seconds">--</span>
-              <span id="orbTotalLeft" class="orb-total-left">全程 02:00</span>
+              <span id="orbTotalLeft" class="orb-total-left">單穴時長 01:00</span>
             </div>
           </div>
 
@@ -192,6 +228,25 @@
             <button type="button" id="startTimerBtn" class="btn-primary-timer">開始跟練按揉</button>
             <button type="button" id="resetTimerBtn" class="btn-secondary-timer">重置</button>
           </div>
+        </div>
+
+        <!-- 🩺 按後痛感體質自我檢測紀錄 -->
+        <div class="info-section pain-log-section" style="margin-top: 12px;">
+          <h4>🩺 按完感覺如何？（點擊紀錄「通則不痛」經絡體質）</h4>
+          <div class="pain-btn-group">
+            <button type="button" class="pain-log-btn" data-feeling="smooth">
+              😌 微痠舒暢<br/><small>氣血通暢</small>
+            </button>
+            <button type="button" class="pain-log-btn" data-feeling="sharp">
+              ⚡ 劇烈痠痛<br/><small>氣滯/火旺</small>
+            </button>
+            <button type="button" class="pain-log-btn" data-feeling="empty">
+              ☁️ 空軟無力<br/><small>氣血偏虛</small>
+            </button>
+          </div>
+          <p id="constitutionInsight" class="constitution-insight">
+            尚未記錄今日按壓體感。按完穴位後點選上方按鈕，系統將自動為您分析近期經絡淤堵趨勢。
+          </p>
         </div>
       </div>
 
@@ -215,16 +270,18 @@
     </aside>
   </main>
 
-  <!-- 📷 AR 鏡頭即時找穴視窗（MediaPipe Hands + Face Landmarker 端側 GPU 追蹤） -->
+  <!-- 📷 AR 鏡頭即時找穴視窗（新增「❄️ 定格畫面」與「⏱️ 3秒倒數定格」） -->
   <div id="arModal" class="ar-modal" role="dialog" aria-modal="true" aria-label="AR 實景鏡頭找穴">
     <div class="ar-modal-card">
       <div class="ar-modal-header">
         <div>
-          <h3 class="ar-modal-title">📷 AR 實景骨骼對穴（iPhone 端側 AI）</h3>
+          <h3 class="ar-modal-title">📷 AR 實景骨骼對穴（對準後點「❄️ 定格」即可放下手機按穴）</h3>
           <p id="arStatusText" class="ar-status-text">準備啟動相機...</p>
         </div>
         <div class="ar-header-btns">
-          <button type="button" id="flipCameraBtn" class="ar-ctrl-btn">🔄 切換前後鏡頭</button>
+          <button type="button" id="freezeArBtn" class="ar-freeze-btn">❄️ 定格畫面</button>
+          <button type="button" id="countdownFreezeBtn" class="ar-ctrl-btn">⏱️ 3秒自拍定格</button>
+          <button type="button" id="flipCameraBtn" class="ar-ctrl-btn">🔄 翻轉鏡頭</button>
           <button type="button" id="closeArModalBtn" class="ar-close-btn">✕ 關閉</button>
         </div>
       </div>
@@ -234,13 +291,13 @@
       </div>
 
       <div class="ar-viewport">
-        <!-- playsinline 與 muted 為 iPhone iOS Safari 內嵌視訊必備屬性 -->
         <video id="arVideo" class="ar-video" playsinline webkit-playsinline autoplay muted></video>
         <canvas id="arCanvas" class="ar-canvas"></canvas>
+        <div id="arCountdownOverlay" class="ar-countdown-overlay" style="display: none;">3</div>
       </div>
 
       <div class="ar-footer">
-        <span class="ar-footer-label">切換 AR 追蹤穴位：</span>
+        <span class="ar-footer-label">切換 AR 追蹤穴位（定格狀態下也可直接點擊切換穴位標記）：</span>
         <div id="arPointChips" class="ar-point-chips"></div>
       </div>
     </div>

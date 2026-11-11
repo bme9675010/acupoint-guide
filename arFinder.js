@@ -30,6 +30,10 @@ let faceLandmarker = null;
 
 const arState = {
   isOpen: false,
+  isFrozen: false,           // ❄️ 是否處於定格鎖定狀態（方便放下手機雙手按穴）
+  cachedHandLandmarks: null, // 定格時保留的手部 21 點座標
+  cachedFaceLandmarks: null, // 定格時保留的臉部 478 點座標
+  countdownTimer: null,      // 3 秒倒數定格計時器
   mode: 'hand',              // 'hand' | 'face'
   targetPointId: 'LI4',      // 當前主標示穴位
   showAllInMode: true,       // 同時顯示同部位其他穴位作為參照
@@ -313,6 +317,10 @@ async function startArSession() {
   const canvas = document.getElementById('arCanvas');
   const statusEl = document.getElementById('arStatusText');
 
+  arState.isFrozen = false;
+  arState.cachedHandLandmarks = null;
+  arState.cachedFaceLandmarks = null;
+  updateFreezeButtonsUI();
   stopCameraStream();
 
   try {
@@ -332,14 +340,12 @@ async function startArSession() {
         }
       });
     } catch (_) {
-      // 電腦無前後鏡頭之分時 fallback
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }
 
     arState.stream = stream;
     video.srcObject = stream;
 
-    // 前鏡頭自拍時開啟鏡像翻轉，讓畫面像照鏡子一樣直覺
     const isMirrored = arState.facingMode === 'user';
     video.style.transform = isMirrored ? 'scaleX(-1)' : 'none';
     canvas.style.transform = isMirrored ? 'scaleX(-1)' : 'none';
@@ -352,6 +358,69 @@ async function startArSession() {
   } catch (err) {
     statusEl.textContent = `⚠️ 無法啟動相機：${err.message || '請確認已允許瀏覽器相機權限'}`;
   }
+}
+
+function updateFreezeButtonsUI() {
+  const freezeBtn = document.getElementById('freezeArBtn');
+  if (!freezeBtn) return;
+  if (arState.isFrozen) {
+    freezeBtn.textContent = '▶️ 恢復即時鏡頭';
+    freezeBtn.classList.add('frozen');
+  } else {
+    freezeBtn.textContent = '❄️ 定格畫面';
+    freezeBtn.classList.remove('frozen');
+  }
+}
+
+function toggleFreezeFrame() {
+  const video = document.getElementById('arVideo');
+  const statusEl = document.getElementById('arStatusText');
+  if (!video) return;
+
+  if (arState.isFrozen) {
+    arState.isFrozen = false;
+    video.play().catch(() => {});
+    statusEl.textContent = '🟢 已恢復即時鏡頭追蹤';
+  } else {
+    arState.isFrozen = true;
+    video.pause();
+    statusEl.textContent = '❄️ 畫面已定格鎖定！現在可將 iPhone 放桌上，看著紅點雙手按穴（下方仍可切換穴位）';
+  }
+  updateFreezeButtonsUI();
+}
+
+function startCountdownFreeze() {
+  if (arState.countdownTimer) {
+    clearInterval(arState.countdownTimer);
+    arState.countdownTimer = null;
+  }
+  const video = document.getElementById('arVideo');
+  const countdownOverlay = document.getElementById('arCountdownOverlay');
+  if (arState.isFrozen && video) {
+    arState.isFrozen = false;
+    video.play().catch(() => {});
+    updateFreezeButtonsUI();
+  }
+
+  let count = 3;
+  if (countdownOverlay) {
+    countdownOverlay.style.display = 'grid';
+    countdownOverlay.textContent = `${count}`;
+  }
+
+  arState.countdownTimer = setInterval(() => {
+    count -= 1;
+    if (count > 0) {
+      if (countdownOverlay) countdownOverlay.textContent = `${count}`;
+    } else {
+      clearInterval(arState.countdownTimer);
+      arState.countdownTimer = null;
+      if (countdownOverlay) countdownOverlay.style.display = 'none';
+      if (!arState.isFrozen) {
+        toggleFreezeFrame();
+      }
+    }
+  }, 1000);
 }
 
 function renderArLoop() {
@@ -368,133 +437,140 @@ function renderArLoop() {
     }
 
     const nowMs = performance.now();
-    if (video.currentTime !== arState.lastVideoTime) {
-      arState.lastVideoTime = video.currentTime;
+    const shouldDetectNewFrame = !arState.isFrozen && video.currentTime !== arState.lastVideoTime;
 
-      // 計算即時 FPS
+    if (shouldDetectNewFrame) {
+      arState.lastVideoTime = video.currentTime;
       if (arState.lastFrameTimestamp > 0) {
         const currentFps = Math.round(1000 / (nowMs - arState.lastFrameTimestamp));
         arState.fps = Math.round(arState.fps * 0.8 + currentFps * 0.2);
       }
       arState.lastFrameTimestamp = nowMs;
 
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const pulse = 1 + 0.22 * Math.sin(nowMs / 180);
-      const W = canvas.width;
-      const H = canvas.height;
-
       if (arState.mode === 'hand' && handLandmarker) {
         const res = handLandmarker.detectForVideo(video, nowMs);
-        if (res.landmarks && res.landmarks.length > 0) {
-          statusEl.textContent = `🟢 已鎖定手部骨骼 (${arState.fps} FPS)・紅點即為目標穴位`;
-          for (const handLms of res.landmarks) {
-            // 繪製淡金色掌骨連線輔助對位
-            const boneChains = [
-              [0, 1, 2, 3, 4],
-              [0, 5, 6, 7, 8],
-              [0, 9, 10, 11, 12],
-              [0, 13, 14, 15, 16],
-              [0, 17, 18, 19, 20],
-              [5, 9, 13, 17]
-            ];
-            ctx.strokeStyle = 'rgba(196, 137, 59, 0.45)';
-            ctx.lineWidth = 2;
-            for (const chain of boneChains) {
-              ctx.beginPath();
-              chain.forEach((idx, i) => {
-                const pt = handLms[idx];
-                if (i === 0) ctx.moveTo(pt.x * W, pt.y * H);
-                else ctx.lineTo(pt.x * W, pt.y * H);
-              });
-              ctx.stroke();
-            }
-
-            // 計算並繪製手部四大穴位
-            const pts = computeHandAcupoints(handLms);
-            Object.values(pts).forEach((p) => {
-              const isPrimary = p.id === arState.targetPointId;
-              if (!isPrimary && !arState.showAllInMode) return;
-
-              // 若是合谷穴且為主目標，額外畫出「第二掌骨基準線」
-              if (p.id === 'LI4' && isPrimary && p.boneLine) {
-                ctx.save();
-                ctx.strokeStyle = '#2A483A';
-                ctx.lineWidth = 4;
-                ctx.setLineDash([5, 3]);
-                ctx.beginPath();
-                ctx.moveTo(p.boneLine[0].x * W, p.boneLine[0].y * H);
-                ctx.lineTo(p.boneLine[1].x * W, p.boneLine[1].y * H);
-                ctx.stroke();
-                ctx.restore();
-              }
-
-              // 若是內關穴且為主目標，畫出手腕到內關的 2 寸延伸虛線
-              if (p.id === 'PC6' && isPrimary && p.wristOrigin) {
-                ctx.save();
-                ctx.strokeStyle = '#2A483A';
-                ctx.lineWidth = 3;
-                ctx.setLineDash([4, 3]);
-                ctx.beginPath();
-                ctx.moveTo(p.wristOrigin.x * W, p.wristOrigin.y * H);
-                ctx.lineTo(p.x * W, p.y * H);
-                ctx.stroke();
-                ctx.restore();
-              }
-
-              drawAcupointMarker(ctx, p.x * W, p.y * H, p.name, isPrimary, pulse);
-            });
-          }
-        } else {
-          statusEl.textContent = '👋 請將手掌或手背放進畫面中（保持光線充足）...';
-        }
+        arState.cachedHandLandmarks = res.landmarks || [];
       } else if (arState.mode === 'face' && faceLandmarker) {
         const res = faceLandmarker.detectForVideo(video, nowMs);
-        if (res.faceLandmarks && res.faceLandmarks.length > 0) {
-          statusEl.textContent = `🟢 已鎖定臉部骨度 (${arState.fps} FPS)・紅點即為目標穴位`;
-          for (const faceLms of res.faceLandmarks) {
-            const pts = computeFaceAcupoints(faceLms);
-            Object.values(pts).forEach((group) => {
-              const isPrimary = group.id === arState.targetPointId;
-              if (!isPrimary && !arState.showAllInMode) return;
+        arState.cachedFaceLandmarks = res.faceLandmarks || [];
+      }
+    }
 
-              if (group.midline && isPrimary) {
-                ctx.save();
-                ctx.strokeStyle = 'rgba(196, 137, 59, 0.7)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([4, 3]);
-                ctx.beginPath();
-                ctx.moveTo(group.midline[0].x * W, group.midline[0].y * H);
-                ctx.lineTo(group.midline[1].x * W, group.midline[1].y * H);
-                ctx.stroke();
-                ctx.restore();
-              }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-              group.points.forEach((pt, idx) => {
-                // 對稱雙穴只在其中一側顯示文字標籤避免重疊，雙側都畫紅點
-                const label = idx === 0 ? group.name : '';
-                if (label) {
-                  drawAcupointMarker(ctx, pt.x * W, pt.y * H, label, isPrimary, pulse);
-                } else {
-                  ctx.beginPath();
-                  ctx.arc(pt.x * W, pt.y * H, (isPrimary ? 16 : 10) * pulse, 0, Math.PI * 2);
-                  ctx.fillStyle = isPrimary ? 'rgba(184, 61, 46, 0.35)' : 'rgba(196, 137, 59, 0.25)';
-                  ctx.fill();
-                  ctx.beginPath();
-                  ctx.arc(pt.x * W, pt.y * H, isPrimary ? 7.5 : 5, 0, Math.PI * 2);
-                  ctx.fillStyle = isPrimary ? '#B83D2E' : '#C4893B';
-                  ctx.fill();
-                  ctx.lineWidth = 2;
-                  ctx.strokeStyle = '#FFF';
-                  ctx.stroke();
-                }
-              });
-            });
-          }
-        } else {
-          statusEl.textContent = '😊 請將臉部對準畫面中央...';
+    const pulse = 1 + 0.22 * Math.sin(nowMs / 180);
+    const W = canvas.width;
+    const H = canvas.height;
+
+    if (arState.mode === 'hand') {
+      const handList = arState.cachedHandLandmarks || [];
+      if (handList.length > 0) {
+        if (!arState.isFrozen) {
+          statusEl.textContent = `🟢 已鎖定手部骨骼 (${arState.fps} FPS)・點「❄️ 定格畫面」即可放下手機按穴`;
         }
+        for (const handLms of handList) {
+          const boneChains = [
+            [0, 1, 2, 3, 4],
+            [0, 5, 6, 7, 8],
+            [0, 9, 10, 11, 12],
+            [0, 13, 14, 15, 16],
+            [0, 17, 18, 19, 20],
+            [5, 9, 13, 17]
+          ];
+          ctx.strokeStyle = 'rgba(196, 137, 59, 0.48)';
+          ctx.lineWidth = 2;
+          for (const chain of boneChains) {
+            ctx.beginPath();
+            chain.forEach((idx, i) => {
+              const pt = handLms[idx];
+              if (i === 0) ctx.moveTo(pt.x * W, pt.y * H);
+              else ctx.lineTo(pt.x * W, pt.y * H);
+            });
+            ctx.stroke();
+          }
+
+          const pts = computeHandAcupoints(handLms);
+          Object.values(pts).forEach((p) => {
+            const isPrimary = p.id === arState.targetPointId;
+            if (!isPrimary && !arState.showAllInMode) return;
+
+            if (p.id === 'LI4' && isPrimary && p.boneLine) {
+              ctx.save();
+              ctx.strokeStyle = '#2A483A';
+              ctx.lineWidth = 4;
+              ctx.setLineDash([5, 3]);
+              ctx.beginPath();
+              ctx.moveTo(p.boneLine[0].x * W, p.boneLine[0].y * H);
+              ctx.lineTo(p.boneLine[1].x * W, p.boneLine[1].y * H);
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            if (p.id === 'PC6' && isPrimary && p.wristOrigin) {
+              ctx.save();
+              ctx.strokeStyle = '#2A483A';
+              ctx.lineWidth = 3;
+              ctx.setLineDash([4, 3]);
+              ctx.beginPath();
+              ctx.moveTo(p.wristOrigin.x * W, p.wristOrigin.y * H);
+              ctx.lineTo(p.x * W, p.y * H);
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            drawAcupointMarker(ctx, p.x * W, p.y * H, p.name, isPrimary, pulse);
+          });
+        }
+      } else if (!arState.isFrozen) {
+        statusEl.textContent = '👋 請將手掌或手背放進畫面中（保持光線充足）...';
+      }
+    } else if (arState.mode === 'face') {
+      const faceList = arState.cachedFaceLandmarks || [];
+      if (faceList.length > 0) {
+        if (!arState.isFrozen) {
+          statusEl.textContent = `🟢 已鎖定臉部骨度 (${arState.fps} FPS)・點「❄️ 定格畫面」即可固定紅點`;
+        }
+        for (const faceLms of faceList) {
+          const pts = computeFaceAcupoints(faceLms);
+          Object.values(pts).forEach((group) => {
+            const isPrimary = group.id === arState.targetPointId;
+            if (!isPrimary && !arState.showAllInMode) return;
+
+            if (group.midline && isPrimary) {
+              ctx.save();
+              ctx.strokeStyle = 'rgba(196, 137, 59, 0.7)';
+              ctx.lineWidth = 2;
+              ctx.setLineDash([4, 3]);
+              ctx.beginPath();
+              ctx.moveTo(group.midline[0].x * W, group.midline[0].y * H);
+              ctx.lineTo(group.midline[1].x * W, group.midline[1].y * H);
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            group.points.forEach((pt, idx) => {
+              const label = idx === 0 ? group.name : '';
+              if (label) {
+                drawAcupointMarker(ctx, pt.x * W, pt.y * H, label, isPrimary, pulse);
+              } else {
+                ctx.beginPath();
+                ctx.arc(pt.x * W, pt.y * H, (isPrimary ? 16 : 10) * pulse, 0, Math.PI * 2);
+                ctx.fillStyle = isPrimary ? 'rgba(184, 61, 46, 0.35)' : 'rgba(196, 137, 59, 0.25)';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(pt.x * W, pt.y * H, isPrimary ? 7.5 : 5, 0, Math.PI * 2);
+                ctx.fillStyle = isPrimary ? '#B83D2E' : '#C4893B';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#FFF';
+                ctx.stroke();
+              }
+            });
+          });
+        }
+      } else if (!arState.isFrozen) {
+        statusEl.textContent = '😊 請將臉部對準畫面中央...';
       }
     }
   }
@@ -515,6 +591,13 @@ function stopCameraStream() {
 
 export function closeArModal() {
   arState.isOpen = false;
+  arState.isFrozen = false;
+  if (arState.countdownTimer) {
+    clearInterval(arState.countdownTimer);
+    arState.countdownTimer = null;
+  }
+  const countdownOverlay = document.getElementById('arCountdownOverlay');
+  if (countdownOverlay) countdownOverlay.style.display = 'none';
   stopCameraStream();
   document.getElementById('arModal')?.classList.remove('open');
 }
@@ -529,6 +612,10 @@ function updateArPointButtons() {
 export function initArControls(onSelectPointInMainApp) {
   // 綁定關閉按鈕
   document.getElementById('closeArModalBtn')?.addEventListener('click', closeArModal);
+
+  // 綁定定格與 3 秒倒數定格按鈕
+  document.getElementById('freezeArBtn')?.addEventListener('click', toggleFreezeFrame);
+  document.getElementById('countdownFreezeBtn')?.addEventListener('click', startCountdownFreeze);
 
   // 綁定前後鏡頭切換按鈕
   document.getElementById('flipCameraBtn')?.addEventListener('click', async () => {

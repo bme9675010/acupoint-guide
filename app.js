@@ -8,6 +8,10 @@ const state = {
   selectedPointId: 'LI4',        // 預設選中合谷穴
   activePresetId: null,          // 當前處方籤 ID
   activeSymptomTag: null,        // 當前單一症狀篩選
+  searchQuery: '',               // 白話症狀與穴位搜尋字串
+  pregnancySafeMode: false,      // 🤰 孕期安全鎖（開啟時標示並於連播自動跳過孕婦禁穴）
+  favorites: new Set(),          // ⭐ 個人收藏穴位 ID 集合
+  painLogs: [],                  // 🩺 按後痛感與體質紀錄陣列
   highlightedIds: new Set(),     // 高亮穴位集合
   xrayOpacity: 0.55,             // 骨骼透視透明度 (0 ~ 1)
   autoZoomEnabled: true,         // 點擊穴位時是否自動局部放大畫布
@@ -26,6 +30,133 @@ const state = {
     intervalId: null
   }
 };
+
+// 口語化白話症狀同義詞字典（對應穴位 ID 或標準症狀）
+const COLLOQUIAL_SYNONYMS = {
+  '宿醉': ['LR3', 'PC6', 'ST36', 'GB20'],
+  '酒醉': ['LR3', 'PC6', 'ST36'],
+  '想吐': ['PC6', 'ST36', 'CV12'],
+  '反胃': ['PC6', 'ST36', 'CV12'],
+  '暈車': ['PC6', 'GB20', 'EX-HN5'],
+  '暈船': ['PC6', 'GB20'],
+  '打嗝': ['PC6', 'CV17', 'CV12', 'ST36'],
+  '胃酸': ['PC6', 'CV12', 'ST36'],
+  '胃食道逆流': ['PC6', 'CV12', 'CV17', 'ST36'],
+  '脹氣': ['CV12', 'ST36', 'PC6', 'SP6'],
+  '肚子痛': ['ST36', 'CV12', 'LI4'],
+  '拉肚子': ['ST36', 'CV12', 'SP6'],
+  '便秘': ['ST36', 'LI4', 'CV6'],
+  '落枕': ['SI3', 'GB20', 'GB21', 'LU7'],
+  '脖子痛': ['SI3', 'GB20', 'GB21', 'GV14'],
+  '肩頸僵硬': ['GB20', 'GB21', 'SI3', 'LI4'],
+  '五十肩': ['GB21', 'LI4', 'SI3'],
+  '媽媽手': ['LU7', 'LI4', 'PC6'],
+  '滑鼠手': ['PC6', 'LU7', 'HT7', 'LI4'],
+  '手腕痛': ['PC6', 'HT7', 'LU7'],
+  '水腫': ['SP9', 'SP6', 'ST36', 'KI3', 'BL60'],
+  '瘦腿': ['SP9', 'ST40', 'SP6', 'BL40'],
+  '泡泡眼': ['BL2', 'EX-HN5', 'SP9'],
+  '乾眼': ['BL2', 'EX-HN5', 'GB20', 'LI4'],
+  '眼睛乾': ['BL2', 'EX-HN5', 'GB20'],
+  '黑眼圈': ['BL2', 'EX-HN5', 'SP6', 'KI3'],
+  '睡不著': ['HT7', 'EX-HN3', 'PC6', 'KI1', 'SP6'],
+  '失眠': ['HT7', 'EX-HN3', 'PC6', 'KI1', 'SP6'],
+  '多夢': ['HT7', 'PC8', 'EX-HN3', 'SP6'],
+  '淺眠': ['HT7', 'EX-HN3', 'KI1'],
+  '心悸': ['PC6', 'HT7', 'CV17'],
+  '胸悶': ['CV17', 'PC6', 'LR3'],
+  '喘不過氣': ['CV17', 'PC6', 'LU7'],
+  '偏頭痛': ['EX-HN5', 'GB20', 'LI4', 'LR3', 'TE17'],
+  '頭暈': ['GV20', 'GB20', 'EX-HN5', 'LR3'],
+  '腦霧': ['GV20', 'EX-HN3', 'GB20'],
+  '提神': ['GV20', 'GB20', 'LI4', 'KI1'],
+  '想睡覺': ['GV20', 'GB20', 'LI4'],
+  '鼻塞': ['LI20', 'EX-HN3', 'GB20', 'LI4'],
+  '過敏': ['LI20', 'LI4', 'GB20', 'ST36'],
+  '流鼻水': ['LI20', 'GB20', 'LU7', 'LI4'],
+  '感冒': ['GB20', 'GV14', 'LU7', 'LI4'],
+  '發燒': ['GV14', 'LI4', 'LU10'],
+  '喉嚨痛': ['LU10', 'LU7', 'LI4', 'KI3'],
+  '咳嗽': ['LU10', 'LU7', 'CV17', 'ST40'],
+  '有痰': ['ST40', 'LU7', 'CV17'],
+  '生理痛': ['SP6', 'CV6', 'LR3', 'LI4'],
+  '經痛': ['SP6', 'CV6', 'LR3', 'LI4'],
+  '月經': ['SP6', 'CV6', 'LR3'],
+  '手腳冰冷': ['KI1', 'CV6', 'ST36', 'KI3'],
+  '腰痛': ['BL40', 'SI3', 'KI3', 'BL60'],
+  '閃到腰': ['BL40', 'SI3', 'BL60'],
+  '坐骨神經': ['BL40', 'BL60', 'GB20'],
+  '足底筋膜炎': ['KI1', 'KI3', 'BL60'],
+  '腳底痛': ['KI1', 'KI3', 'BL60'],
+  '耳鳴': ['TE17', 'KI3', 'GB20'],
+  '火氣大': ['LR3', 'PC8', 'LU10', 'LI4'],
+  '嘴破': ['PC8', 'LR3', 'LI4'],
+  '口臭': ['PC8', 'ST36', 'LR3']
+};
+
+// 載入與儲存 localStorage (收藏處方 + 按後痛感體質紀錄)
+const STORAGE_KEYS = {
+  FAVS: 'acupoint_favs_v1',
+  LOGS: 'acupoint_logs_v1'
+};
+
+function loadPersistedData() {
+  try {
+    const rawFavs = localStorage.getItem(STORAGE_KEYS.FAVS);
+    if (rawFavs) {
+      state.favorites = new Set(JSON.parse(rawFavs));
+    }
+    const rawLogs = localStorage.getItem(STORAGE_KEYS.LOGS);
+    if (rawLogs) {
+      state.painLogs = JSON.parse(rawLogs);
+    }
+  } catch (_) {}
+}
+
+function saveFavorites() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.FAVS, JSON.stringify([...state.favorites]));
+  } catch (_) {}
+}
+
+function savePainLogs() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(state.painLogs.slice(-100)));
+  } catch (_) {}
+}
+
+// 🔆 iPhone 螢幕防休眠常亮鎖 (Screen Wake Lock API)
+let wakeLockSentinel = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLockSentinel = await navigator.wakeLock.request('screen');
+    const badge = document.getElementById('wakeLockBadge');
+    if (badge) badge.style.display = 'inline-block';
+    wakeLockSentinel.addEventListener('release', () => {
+      const b = document.getElementById('wakeLockBadge');
+      if (b && !state.timer.running) b.style.display = 'none';
+    });
+  } catch (_) {}
+}
+
+async function releaseWakeLock() {
+  try {
+    if (wakeLockSentinel) {
+      await wakeLockSentinel.release();
+      wakeLockSentinel = null;
+    }
+  } catch (_) {}
+  const badge = document.getElementById('wakeLockBadge');
+  if (badge) badge.style.display = 'none';
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.timer.running) {
+    requestWakeLock();
+  }
+});
 
 // Web Audio API 頌缽與木魚溫潤音效合成器（完美解決 iPhone Safari 無震動 API 的問題）
 let audioCtx = null;
@@ -469,23 +600,26 @@ function renderBodyCanvas() {
     const isHighlighted = state.highlightedIds.has(pt.id);
     const hasActiveFilter = state.highlightedIds.size > 0;
     const isDimmed = hasActiveFilter && !isHighlighted && !isSelected;
+    const isPregnancyForbidden = state.pregnancySafeMode && pt.contraindications.pregnancyForbidden;
 
     const statusClass = [
       'acupoint-node',
       isSelected ? 'selected' : '',
       isHighlighted ? 'highlighted' : '',
-      isDimmed ? 'dimmed' : ''
+      isDimmed ? 'dimmed' : '',
+      isPregnancyForbidden ? 'pregnancy-forbidden' : ''
     ].filter(Boolean).join(' ');
 
     const labelOnRight = coord.x > 210;
     const labelX = labelOnRight ? coord.x + 12 : coord.x - 12;
     const labelAnchor = labelOnRight ? 'start' : 'end';
+    const displayLabel = isPregnancyForbidden ? `🚫${pt.name}` : pt.name;
 
     nodesMarkup.push(`
       <g class="${statusClass}" data-point-id="${pt.id}" role="button" tabindex="0" aria-label="${pt.name}穴 (${pt.id})">
         <circle class="acupoint-pulse" cx="${coord.x}" cy="${coord.y}" r="11" />
         <circle class="acupoint-core" cx="${coord.x}" cy="${coord.y}" r="6.5" />
-        <text class="acupoint-label" x="${labelX}" y="${coord.y + 4}" text-anchor="${labelAnchor}">${pt.name}</text>
+        <text class="acupoint-label" x="${labelX}" y="${coord.y + 4}" text-anchor="${labelAnchor}">${displayLabel}</text>
       </g>
     `);
 
@@ -570,6 +704,94 @@ function resetSvgZoom() {
   if (resetBtn) resetBtn.style.display = 'none';
 }
 
+// 更新收藏按鈕狀態
+function updateFavButtonUI(pointId) {
+  const favBtn = document.getElementById('favPointBtn');
+  if (!favBtn) return;
+  const isFav = state.favorites.has(pointId);
+  favBtn.textContent = isFav ? '⭐ 已收藏' : '☆ 收藏';
+  favBtn.classList.toggle('active', isFav);
+}
+
+// 渲染「按後痛感體質自我檢測紀錄」與打卡統計
+function updatePainLogAndConstitutionUI() {
+  const countEl = document.getElementById('totalLogsCount');
+  if (countEl) {
+    countEl.textContent = String(state.painLogs.length);
+  }
+
+  const pointLogs = state.painLogs.filter((item) => item.pointId === state.selectedPointId);
+  const latestForPoint = pointLogs.length > 0 ? pointLogs[pointLogs.length - 1] : null;
+  document.querySelectorAll('.pain-log-btn').forEach((btn) => {
+    btn.classList.toggle('active', latestForPoint && btn.getAttribute('data-pain') === latestForPoint.painType);
+  });
+
+  const insightEl = document.getElementById('constitutionInsight');
+  if (!insightEl) return;
+
+  if (state.painLogs.length === 0) {
+    insightEl.style.display = 'none';
+    return;
+  }
+
+  // 統計各經絡「劇烈痠痛(氣滯不通)」與「空軟無力(氣血偏虛)」次數
+  const sharpMeridians = {};
+  const emptyMeridians = {};
+  let smoothCount = 0;
+
+  state.painLogs.forEach((log) => {
+    if (log.painType === 'sharp') {
+      sharpMeridians[log.meridian] = (sharpMeridians[log.meridian] || 0) + 1;
+    } else if (log.painType === 'empty') {
+      emptyMeridians[log.meridian] = (emptyMeridians[log.meridian] || 0) + 1;
+    } else {
+      smoothCount += 1;
+    }
+  });
+
+  const topSharp = Object.entries(sharpMeridians).sort((a, b) => b[1] - a[1])[0];
+  const topEmpty = Object.entries(emptyMeridians).sort((a, b) => b[1] - a[1])[0];
+
+  const lines = [];
+  if (latestForPoint) {
+    const labelMap = {
+      smooth: '😌 微痠舒暢（經氣通暢）',
+      sharp: '⚡ 劇烈痠痛（氣滯瘀堵，建議熱敷並放輕力道）',
+      empty: '☁️ 空軟無力（氣血偏虛，宜用指腹輕柔久按補氣）'
+    };
+    lines.push(`<strong>本穴最新手感：</strong>${labelMap[latestForPoint.painType]}`);
+  }
+
+  if (topSharp) {
+    lines.push(`🔥 <strong>近期易堵經絡：</strong>【${topSharp[0]}】（累計 ${topSharp[1]} 次痠脹刺痛，中醫所謂「不通則痛」，日常可多推揉該經絡疏通氣機）`);
+  }
+  if (topEmpty) {
+    lines.push(`🌿 <strong>需溫養經絡：</strong>【${topEmpty[0]}】（累計 ${topEmpty[1]} 次按之空軟，中醫所謂「不榮則痛」，宜早睡並配合溫水泡腳養血）`);
+  }
+  if (!topSharp && !topEmpty && smoothCount > 0) {
+    lines.push(`✨ <strong>整體經絡狀態：</strong>近期打卡 ${smoothCount} 次皆為「微痠舒暢」，代表周身氣血運行相當平順！`);
+  }
+
+  insightEl.innerHTML = lines.join('<br/>');
+  insightEl.style.display = 'block';
+}
+
+function recordPainSensation(painType) {
+  const point = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+  if (!point) return;
+
+  state.painLogs.push({
+    pointId: point.id,
+    pointName: point.name,
+    meridian: point.meridian,
+    painType,
+    timestamp: Date.now()
+  });
+
+  savePainLogs();
+  updatePainLogAndConstitutionUI();
+}
+
 // 更新右側詳情面板內容
 function renderInspector(point) {
   document.getElementById('pointName').textContent = point.name;
@@ -578,11 +800,19 @@ function renderInspector(point) {
   document.getElementById('pointMeridian').textContent = point.meridian;
   document.getElementById('pointAttr').textContent = point.attribute;
 
+  updateFavButtonUI(point.id);
+  updatePainLogAndConstitutionUI();
+
   const cautionEl = document.getElementById('cautionBanner');
-  cautionEl.textContent = point.contraindications.notes;
-  cautionEl.className = point.contraindications.pregnancyForbidden
-    ? 'caution-banner'
-    : 'caution-banner safe';
+  if (state.pregnancySafeMode && point.contraindications.pregnancyForbidden) {
+    cautionEl.textContent = `🤰【孕期安全鎖已啟動】${point.contraindications.notes}（處方連播時將自動為您跳過此穴）`;
+    cautionEl.className = 'caution-banner';
+  } else {
+    cautionEl.textContent = point.contraindications.notes;
+    cautionEl.className = point.contraindications.pregnancyForbidden
+      ? 'caution-banner'
+      : 'caution-banner safe';
+  }
 
   const inspectorArBtn = document.getElementById('inspectorArBtn');
   if (inspectorArBtn) {
@@ -693,6 +923,27 @@ function switchDetailTab(tabId) {
   });
 }
 
+// 取得所有處方（含動態「⭐ 我的收藏處方」）
+function getAllPresets() {
+  const list = [...SYMPTOM_PRESETS];
+  if (state.favorites.size > 0) {
+    const favPoints = [...state.favorites];
+    const favNames = favPoints
+      .map((id) => ACUPOINTS.find((p) => p.id === id)?.name)
+      .filter(Boolean)
+      .slice(0, 3)
+      .join('＋');
+    list.unshift({
+      id: 'fav_custom',
+      title: '我的收藏處方',
+      subtitle: `${favNames}${favPoints.length > 3 ? ` 等 ${favPoints.length} 穴` : ''}`,
+      icon: '⭐',
+      points: favPoints
+    });
+  }
+  return list;
+}
+
 // 🎵 處方連續自動跟練播放清單控制
 function updatePlaylistBannerUI() {
   const banner = document.getElementById('playlistBanner');
@@ -701,18 +952,23 @@ function updatePlaylistBannerUI() {
   const playBtn = document.getElementById('startPlaylistBtn');
   if (!banner || !titleEl || !stepsEl || !playBtn) return;
 
-  const preset = SYMPTOM_PRESETS.find((p) => p.id === state.activePresetId);
+  const preset = getAllPresets().find((p) => p.id === state.activePresetId);
   if (!preset) {
     banner.style.display = 'none';
     return;
   }
 
   banner.style.display = 'flex';
-  titleEl.textContent = `${preset.icon} 【${preset.title}】連續跟練處方（共 ${preset.points.length} 穴）`;
+  const safeQueue = state.pregnancySafeMode
+    ? preset.points.filter((pid) => !ACUPOINTS.find((p) => p.id === pid)?.contraindications.pregnancyForbidden)
+    : preset.points;
+
+  titleEl.textContent = `${preset.icon} 【${preset.title}】連續跟練處方（共 ${safeQueue.length} 穴${state.pregnancySafeMode && safeQueue.length < preset.points.length ? '・已濾除孕期禁穴' : ''}）`;
 
   stepsEl.innerHTML = preset.points
     .map((pid, idx) => {
       const pt = ACUPOINTS.find((p) => p.id === pid);
+      const isForbidden = state.pregnancySafeMode && pt?.contraindications.pregnancyForbidden;
       const isCurrent = state.selectedPointId === pid;
       const isDone = state.playlist.completedIds.has(pid);
       const cls = [
@@ -721,8 +977,8 @@ function updatePlaylistBannerUI() {
         isDone ? 'done' : ''
       ].filter(Boolean).join(' ');
       return `
-        <span class="${cls}" data-step-point="${pid}">
-          ${isDone ? '✓ ' : `${idx + 1}. `}${pt ? pt.name : pid}
+        <span class="${cls}" data-step-point="${pid}" style="${isForbidden ? 'opacity:0.45;text-decoration:line-through;' : ''}">
+          ${isForbidden ? '🚫 ' : isDone ? '✓ ' : `${idx + 1}. `}${pt ? pt.name : pid}
         </span>
       `;
     })
@@ -745,7 +1001,7 @@ function updatePlaylistBannerUI() {
 }
 
 function togglePlaylistExecution() {
-  const preset = SYMPTOM_PRESETS.find((p) => p.id === state.activePresetId);
+  const preset = getAllPresets().find((p) => p.id === state.activePresetId);
   if (!preset) return;
 
   if (state.playlist.isPlaying) {
@@ -755,9 +1011,18 @@ function togglePlaylistExecution() {
     return;
   }
 
+  const queue = state.pregnancySafeMode
+    ? preset.points.filter((pid) => !ACUPOINTS.find((p) => p.id === pid)?.contraindications.pregnancyForbidden)
+    : [...preset.points];
+
+  if (queue.length === 0) {
+    speakGuide('目前處方中的穴位皆為孕期禁穴，已為您安全攔截');
+    return;
+  }
+
   // 啟動整套處方自動連播
   state.playlist.isPlaying = true;
-  state.playlist.queue = [...preset.points];
+  state.playlist.queue = queue;
   state.playlist.currentIndex = 0;
   state.playlist.completedIds.clear();
 
@@ -768,12 +1033,15 @@ function togglePlaylistExecution() {
   updatePlaylistBannerUI();
 
   if (firstPt) {
-    speakGuide(`開始${preset.title}處方跟練，第一穴：${firstPt.name}穴，請深按`);
+    const skipNotice = state.pregnancySafeMode && queue.length < preset.points.length
+      ? '，已自動略過孕婦禁穴'
+      : '';
+    speakGuide(`開始${preset.title}處方跟練${skipNotice}，第一穴：${firstPt.name}穴，請深按`);
   }
   toggleTimer();
 }
 
-// 啟動或暫停呼吸跟練計時器（支援單穴跟練與處方自動跳下一穴）
+// 啟動或暫停呼吸跟練計時器（支援單穴跟練與處方自動跳下一穴 + iPhone 螢幕防休眠）
 function toggleTimer() {
   const point = ACUPOINTS.find((p) => p.id === state.selectedPointId);
   if (!point) return;
@@ -790,6 +1058,7 @@ function toggleTimer() {
     btn.textContent = '繼續跟練';
     phaseEl.textContent = '已暫停';
     ring.className = 'breathing-orb-ring';
+    releaseWakeLock();
     return;
   }
 
@@ -802,6 +1071,7 @@ function toggleTimer() {
 
   state.timer.running = true;
   btn.textContent = '暫停跟練';
+  requestWakeLock();
 
   const updateTimerUI = (triggerSound = false) => {
     const prefix = state.playlist.isPlaying
@@ -858,7 +1128,7 @@ function toggleTimer() {
           phaseEl.textContent = '處方圓滿完成';
           secEl.textContent = '🎉';
           playSingingBowl('press');
-          speakGuide('恭喜您完成整套養生處方按揉，請喝一杯溫開水休息');
+          speakGuide('恭喜您完成整套養生處方按揉，請紀錄下方按後手感並喝溫水休息');
           return;
         }
       }
@@ -866,7 +1136,7 @@ function toggleTimer() {
       phaseEl.textContent = '功德圓滿';
       secEl.textContent = '✓';
       playSingingBowl('press');
-      speakGuide('按揉完成，請喝溫水休息');
+      speakGuide('按揉完成，請於下方點擊紀錄您的按後痛感');
       return;
     }
 
@@ -889,6 +1159,8 @@ function stopAndResetTimer() {
   if (state.timer.intervalId) {
     clearInterval(state.timer.intervalId);
   }
+  releaseWakeLock();
+
   const point = ACUPOINTS.find((p) => p.id === state.selectedPointId);
   const totalSec = point ? point.massageGuide.rhythm.totalDurationSec : 60;
 
@@ -913,11 +1185,14 @@ function stopAndResetTimer() {
   if (totalEl) totalEl.textContent = `單穴時長 ${formatTime(totalSec)}`;
 }
 
-// 渲染處方籤與症狀快篩列
-function initFilters() {
+// 渲染處方籤列（含⭐我的收藏處方）
+function renderPresetRow() {
   const presetRow = document.getElementById('presetRow');
-  presetRow.innerHTML = SYMPTOM_PRESETS.map((preset) => `
-    <div class="preset-card" data-preset-id="${preset.id}">
+  if (!presetRow) return;
+
+  const allPresets = getAllPresets();
+  presetRow.innerHTML = allPresets.map((preset) => `
+    <div class="preset-card ${state.activePresetId === preset.id ? 'active' : ''}" data-preset-id="${preset.id}">
       <span class="preset-icon">${preset.icon}</span>
       <div>
         <div class="preset-title">${preset.title}</div>
@@ -947,14 +1222,19 @@ function initFilters() {
       document.querySelectorAll('.symptom-chip').forEach((c) => c.classList.remove('active'));
       card.classList.add('active');
 
-      const preset = SYMPTOM_PRESETS.find((p) => p.id === id);
-      if (preset) {
+      const preset = getAllPresets().find((p) => p.id === id);
+      if (preset && preset.points.length > 0) {
         state.highlightedIds = new Set(preset.points);
         selectAcupoint(preset.points[0], true);
         updatePlaylistBannerUI();
       }
     });
   });
+}
+
+// 渲染處方籤與症狀快篩列
+function initFilters() {
+  renderPresetRow();
 
   const allSymptoms = ['肩頸痠痛', '頭痛', '失眠焦慮', '用眼過度', '胃脹噁心', '下肢水腫', '經痛', '手腳冰冷', '腰痠背痛', '鼻塞流涕', '咽喉乾痛', '耳鳴重聽'];
   const tagsRow = document.getElementById('symptomTagsRow');
@@ -974,6 +1254,64 @@ function initFilters() {
   });
 
   document.getElementById('clearFilterBtn')?.addEventListener('click', clearAllFilters);
+}
+
+// 🔍 白話症狀與穴位模糊搜尋
+function applyColloquialSearch(rawQuery) {
+  const q = rawQuery.trim().toLowerCase();
+  state.searchQuery = q;
+
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  if (clearSearchBtn) {
+    clearSearchBtn.style.display = q ? 'inline-block' : 'none';
+  }
+
+  if (!q) {
+    clearAllFilters();
+    return;
+  }
+
+  state.activePresetId = null;
+  state.activeSymptomTag = null;
+  state.playlist.isPlaying = false;
+  updatePlaylistBannerUI();
+  document.querySelectorAll('.preset-card, .symptom-chip').forEach((el) => el.classList.remove('active'));
+
+  const matchedSet = new Set();
+
+  // 1. 比對口語同義詞字典
+  Object.entries(COLLOQUIAL_SYNONYMS).forEach(([keyword, pointIds]) => {
+    if (keyword.includes(q) || q.includes(keyword)) {
+      pointIds.forEach((id) => matchedSet.add(id));
+    }
+  });
+
+  // 2. 比對穴位名稱、代碼、拼音、經絡、中醫功效與適應症
+  ACUPOINTS.forEach((pt) => {
+    const haystack = [
+      pt.name,
+      pt.id,
+      pt.pinyin,
+      pt.meridian,
+      ...pt.benefits.symptoms,
+      ...pt.benefits.tcmFunctions
+    ].join(' ').toLowerCase();
+
+    if (haystack.includes(q)) {
+      matchedSet.add(pt.id);
+    }
+  });
+
+  state.highlightedIds = matchedSet;
+  const clearBtn = document.getElementById('clearFilterBtn');
+  if (clearBtn) clearBtn.style.display = 'inline-block';
+
+  const firstMatch = [...matchedSet][0];
+  if (firstMatch) {
+    selectAcupoint(firstMatch, true);
+  } else {
+    renderBodyCanvas();
+  }
 }
 
 function applySymptomFilter(symptom) {
@@ -1003,9 +1341,16 @@ function applySymptomFilter(symptom) {
 function clearAllFilters() {
   state.activePresetId = null;
   state.activeSymptomTag = null;
+  state.searchQuery = '';
   state.playlist.isPlaying = false;
   state.highlightedIds.clear();
   updatePlaylistBannerUI();
+
+  const searchInput = document.getElementById('symptomSearchInput');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  if (searchInput) searchInput.value = '';
+  if (clearSearchBtn) clearSearchBtn.style.display = 'none';
+
   document.querySelectorAll('.preset-card, .symptom-chip').forEach((el) => el.classList.remove('active'));
   const clearBtn = document.getElementById('clearFilterBtn');
   if (clearBtn) clearBtn.style.display = 'none';
@@ -1057,6 +1402,53 @@ function bindEvents() {
       updateViewTabButtons();
       renderBodyCanvas();
       resetSvgZoom();
+    });
+  });
+
+  // 🔍 白話搜尋框事件
+  const searchInput = document.getElementById('symptomSearchInput');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  searchInput?.addEventListener('input', (e) => {
+    applyColloquialSearch(e.target.value);
+  });
+  clearSearchBtn?.addEventListener('click', () => {
+    clearAllFilters();
+  });
+
+  // 🤰 孕期安全鎖事件
+  const pregCheckbox = document.getElementById('pregnancySafeCheckbox');
+  const pregLabel = document.getElementById('pregnancySafeToggle');
+  pregCheckbox?.addEventListener('change', (e) => {
+    state.pregnancySafeMode = e.target.checked;
+    pregLabel?.classList.toggle('active', state.pregnancySafeMode);
+    renderBodyCanvas();
+    const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+    if (currentPt) renderInspector(currentPt);
+    updatePlaylistBannerUI();
+  });
+
+  // ⭐ 收藏穴位按鈕事件
+  document.getElementById('favPointBtn')?.addEventListener('click', () => {
+    const pid = state.selectedPointId;
+    if (state.favorites.has(pid)) {
+      state.favorites.delete(pid);
+      if (state.activePresetId === 'fav_custom' && state.favorites.size === 0) {
+        state.activePresetId = null;
+      }
+    } else {
+      state.favorites.add(pid);
+    }
+    saveFavorites();
+    updateFavButtonUI(pid);
+    renderPresetRow();
+    updatePlaylistBannerUI();
+  });
+
+  // 🩺 按後痛感體質自我檢測紀錄事件
+  document.querySelectorAll('.pain-log-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const painType = btn.getAttribute('data-pain');
+      if (painType) recordPainSensation(painType);
     });
   });
 
@@ -1113,10 +1505,19 @@ function bindEvents() {
   });
 }
 
+// 註冊 PWA 離線 Service Worker
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+}
+
 // 啟動應用
 window.addEventListener('DOMContentLoaded', () => {
+  loadPersistedData();
   initZiwuLiuzhu();
   initFilters();
   bindEvents();
   selectAcupoint('LI4', false);
+  registerServiceWorker();
 });
