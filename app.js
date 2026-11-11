@@ -100,12 +100,14 @@ const COLLOQUIAL_SYNONYMS = {
   '宿便': ['ST25', 'ST36', 'LI4', 'REFLEX-STOMACH'],
   '頻尿': ['CV6', 'BL23', 'KI3'],
   '夜尿': ['CV6', 'BL23', 'KI3', 'KI1'],
-  '腳底按摩': ['REFLEX-KIDNEY', 'KI1', 'REFLEX-STOMACH', 'EX-LE-SHIMIAN', 'REFLEX-BRAIN', 'REFLEX-EYE-TRAP'],
-  '足底反射區': ['REFLEX-KIDNEY', 'REFLEX-STOMACH', 'REFLEX-LIVER-HEART', 'REFLEX-BRAIN', 'REFLEX-EYE-TRAP', 'REFLEX-PELVIS'],
+  '腳底按摩': ['REFLEX-KIDNEY', 'KI1', 'REFLEX-STOMACH', 'EX-LE-SHIMIAN', 'REFLEX-BRAIN', 'REFLEX-EYE-TRAP', 'REFLEX-LIVER', 'REFLEX-HEART'],
+  '足底反射區': ['REFLEX-KIDNEY', 'REFLEX-STOMACH', 'REFLEX-LIVER', 'REFLEX-HEART', 'REFLEX-BRAIN', 'REFLEX-EYE-TRAP', 'REFLEX-PELVIS'],
   '腳後跟': ['EX-LE-SHIMIAN', 'REFLEX-PELVIS', 'KI3', 'BL60'],
   '氣結': ['REFLEX-STOMACH', 'REFLEX-KIDNEY', 'REFLEX-EYE-TRAP', 'CV17'],
   '排毒': ['REFLEX-KIDNEY', 'BL40', 'SP9', 'LR3'],
-  '爆肝': ['REFLEX-LIVER-HEART', 'LR3', 'GB20']
+  '爆肝': ['REFLEX-LIVER', 'LR3', 'GB20'],
+  '右腳': ['REFLEX-LIVER'],
+  '左腳': ['REFLEX-HEART']
 };
 
 // 載入與儲存 localStorage (收藏處方 + 按後痛感體質紀錄)
@@ -542,15 +544,22 @@ function getBaseBodySvgMarkup(view, xrayOpacity) {
         </marker>
       </defs>
 
-      <text x="200" y="30" text-anchor="middle" fill="#2A483A" font-family="Noto Serif TC, serif" font-weight="bold" font-size="13.5">
+      <text x="200" y="26" text-anchor="middle" fill="#2A483A" font-family="Noto Serif TC, serif" font-weight="bold" font-size="13.5">
         🦶 足底全息反射區＆經外奇穴圖（可直接點擊色塊或紅點）
       </text>
-      <text x="132" y="54" text-anchor="middle" fill="#8C584C" font-size="11.5" font-weight="bold">
-        【右足底】外側主肝膽
+      <rect x="66" y="38" width="128" height="22" rx="6" fill="rgba(42,115,82,0.12)" stroke="#2A483A" stroke-width="1"/>
+      <text x="130" y="53" text-anchor="middle" fill="#1D4734" font-size="11" font-weight="bold">
+        🦶【右腳底】外側主肝膽
       </text>
-      <text x="268" y="54" text-anchor="middle" fill="#8C584C" font-size="11.5" font-weight="bold">
-        【左足底】外側主心脾
+      <rect x="206" y="38" width="128" height="22" rx="6" fill="rgba(184,61,46,0.12)" stroke="#B83D2E" stroke-width="1"/>
+      <text x="270" y="53" text-anchor="middle" fill="#8A2519" font-size="11" font-weight="bold">
+        🦶【左腳底】外側主心脾
       </text>
+      <text x="200" y="75" text-anchor="middle" fill="#8C6D46" font-size="10.5" font-weight="bold">
+        ← 兩腳大拇趾相對（內側）→
+      </text>
+      <text x="54" y="130" text-anchor="middle" fill="#8C6D46" font-size="9.5">右小趾(外)</text>
+      <text x="346" y="130" text-anchor="middle" fill="#8C6D46" font-size="9.5">左小趾(外)</text>
 
       <!-- 左右雙足底輪廓 -->
       <g class="skin-layer" stroke="#5A5246" stroke-width="2" fill="url(#soleFill)">
@@ -589,7 +598,7 @@ function getBaseBodySvgMarkup(view, xrayOpacity) {
         " />
       </g>
 
-      <!-- 🎨 足底 6 大互動反射區色塊（點擊色塊也可直接選取該區） -->
+      <!-- 🎨 足底互動反射區色塊（點擊色塊也可直接選取該區） -->
       <g class="reflex-zones-layer">
         <!-- ① 大腦頭頸區 (大拇趾腹) -->
         <ellipse class="reflex-zone-poly" data-point-id="REFLEX-BRAIN" cx="162" cy="108" rx="15" ry="21" fill="rgba(196,137,59,0.28)" stroke="#C4893B" stroke-width="1.5" style="cursor:pointer;"/>
@@ -599,11 +608,11 @@ function getBaseBodySvgMarkup(view, xrayOpacity) {
         <path class="reflex-zone-poly" data-point-id="REFLEX-EYE-TRAP" d="M72,158 Q125,138 176,162 L174,198 Q122,186 70,198 Z" fill="rgba(42,72,58,0.18)" stroke="#2A483A" stroke-width="1.4" stroke-dasharray="3 2" style="cursor:pointer;"/>
         <path class="reflex-zone-poly" data-point-id="REFLEX-EYE-TRAP" d="M328,158 Q275,138 224,162 L226,198 Q278,186 330,198 Z" fill="rgba(42,72,58,0.18)" stroke="#2A483A" stroke-width="1.4" stroke-dasharray="3 2" style="cursor:pointer;"/>
 
-        <!-- ③ 右腳肝膽區 / 左腳心臟區 (前掌中段外側) -->
-        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-LIVER-HEART" cx="96" cy="248" rx="22" ry="30" fill="rgba(42,115,82,0.22)" stroke="#2A483A" stroke-width="1.5" style="cursor:pointer;"/>
-        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-LIVER-HEART" cx="304" cy="248" rx="22" ry="30" fill="rgba(184,61,46,0.2)" stroke="#B83D2E" stroke-width="1.5" style="cursor:pointer;"/>
-        <text x="96" y="252" text-anchor="middle" fill="#1D4734" font-size="10" font-weight="bold" pointer-events="none">肝膽區</text>
-        <text x="304" y="252" text-anchor="middle" fill="#8A2519" font-size="10" font-weight="bold" pointer-events="none">心臟區</text>
+        <!-- ③ 【右腳專屬】肝膽區 (x=96) 與 【左腳專屬】心脾區 (x=304) 獨立分開 -->
+        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-LIVER" cx="96" cy="252" rx="22" ry="32" fill="rgba(42,115,82,0.24)" stroke="#2A483A" stroke-width="1.6" style="cursor:pointer;"/>
+        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-HEART" cx="304" cy="252" rx="22" ry="32" fill="rgba(184,61,46,0.22)" stroke="#B83D2E" stroke-width="1.6" style="cursor:pointer;"/>
+        <text x="96" y="272" text-anchor="middle" fill="#1D4734" font-size="9.5" font-weight="bold" pointer-events="none">右腳肝膽</text>
+        <text x="304" y="272" text-anchor="middle" fill="#8A2519" font-size="9.5" font-weight="bold" pointer-events="none">左腳心脾</text>
 
         <!-- ④ 胃・脾・十二指腸區 (內側足弓帶) -->
         <path class="reflex-zone-poly" data-point-id="REFLEX-STOMACH" d="M148,220 C172,225 176,315 152,338 C138,325 138,245 148,220 Z" fill="rgba(212,150,69,0.28)" stroke="#B5792A" stroke-width="1.5" style="cursor:pointer;"/>
@@ -740,18 +749,21 @@ function renderBodyCanvas() {
     const labelOnRight = coord.x > 210;
     const labelX = labelOnRight ? coord.x + 12 : coord.x - 12;
     const labelAnchor = labelOnRight ? 'start' : 'end';
-    const displayLabel = isPregnancyForbidden ? `🚫${pt.name}` : pt.name;
+    let shortName = pt.name;
+    if (pt.id === 'REFLEX-LIVER') shortName = '右腳：肝膽區';
+    if (pt.id === 'REFLEX-HEART') shortName = '左腳：心脾區';
+    const displayLabel = isPregnancyForbidden ? `🚫${shortName}` : shortName;
 
     nodesMarkup.push(`
-      <g class="${statusClass}" data-point-id="${pt.id}" role="button" tabindex="0" aria-label="${pt.name}穴 (${pt.id})">
+      <g class="${statusClass}" data-point-id="${pt.id}" role="button" tabindex="0" aria-label="${pt.name} (${pt.id})">
         <circle class="acupoint-pulse" cx="${coord.x}" cy="${coord.y}" r="11" />
         <circle class="acupoint-core" cx="${coord.x}" cy="${coord.y}" r="6.5" />
         <text class="acupoint-label" x="${labelX}" y="${coord.y + 4}" text-anchor="${labelAnchor}">${displayLabel}</text>
       </g>
     `);
 
-    // 正面、背面、頭面部與足底特寫視圖繪製左右對稱鏡像點（正中線 x=200 單穴除外）
-    if (['front', 'back', 'head', 'sole'].includes(state.currentView) && Math.abs(coord.x - 200) > 4) {
+    // 正面、背面、頭面部與足底特寫視圖繪製左右對稱鏡像點（正中線 x=200 單穴及左右腳單側專屬區除外）
+    if (!pt.asymmetric && ['front', 'back', 'head', 'sole'].includes(state.currentView) && Math.abs(coord.x - 200) > 4) {
       const mirrorX = 400 - coord.x;
       nodesMarkup.push(`
         <g class="${statusClass}" data-point-id="${pt.id}" aria-hidden="true">
@@ -1005,6 +1017,32 @@ function renderInspector(point) {
   document.getElementById('pointPinyin').textContent = point.pinyin;
   document.getElementById('pointMeridian').textContent = point.meridian;
   document.getElementById('pointAttr').textContent = point.attribute;
+
+  const sideBadge = document.getElementById('pointSideBadge');
+  if (sideBadge) {
+    const midlineIds = new Set(['GV20', 'EX-HN3', 'GV26', 'CV17', 'CV12', 'CV6', 'GV14']);
+    if (point.id === 'REFLEX-LIVER') {
+      sideBadge.textContent = '🟢 僅按【右腳底】外側（左腳無此區）';
+      sideBadge.style.background = 'rgba(42, 115, 82, 0.16)';
+      sideBadge.style.color = '#1D4734';
+    } else if (point.id === 'REFLEX-HEART') {
+      sideBadge.textContent = '🔴 僅按【左腳底】外側（右腳無此區）';
+      sideBadge.style.background = 'rgba(184, 61, 46, 0.16)';
+      sideBadge.style.color = '#8A2519';
+    } else if ('sole' in point.views) {
+      sideBadge.textContent = '🦶 左右雙腳對稱（雙腳皆有・建議先左腳後右腳）';
+      sideBadge.style.background = 'rgba(196, 137, 59, 0.18)';
+      sideBadge.style.color = '#7A4F13';
+    } else if (midlineIds.has(point.id)) {
+      sideBadge.textContent = '🎯 正中線單穴（居中按壓）';
+      sideBadge.style.background = 'rgba(140, 109, 70, 0.15)';
+      sideBadge.style.color = '#5A4328';
+    } else {
+      sideBadge.textContent = '👐 左右對稱雙穴（雙側皆可按）';
+      sideBadge.style.background = 'rgba(42, 72, 58, 0.12)';
+      sideBadge.style.color = '#2A483A';
+    }
+  }
 
   updateFavButtonUI(point.id);
   updatePainLogAndConstitutionUI();

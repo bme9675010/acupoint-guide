@@ -1,4 +1,4 @@
-const CACHE_NAME = 'acupoint-guide-v4';
+const CACHE_NAME = 'acupoint-guide-v5';
 const ASSETS = [
   './',
   './index.html',

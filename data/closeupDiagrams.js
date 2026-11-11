@@ -635,36 +635,74 @@ export function getCloseupSvgMarkup(pointId) {
           </svg>
         `;
       }
-      // 🦶 足底奇穴與 6 大反射區特寫圖
+      // 🦶 足底奇穴與反射區特寫圖（左右腳並排清楚對照，避免搞混左右腳！）
       if (pointId.startsWith('REFLEX-') || pointId === 'EX-LE-SHIMIAN' || pointId === 'EX-LE-LINEITING') {
         const posMap = {
-          'REFLEX-BRAIN': { cx: 196, cy: 40, rx: 16, ry: 18, note: '① 大拇趾腹肉球＝大腦區（由上往下推刮散氣結）' },
-          'EX-LE-LINEITING': { cx: 168, cy: 62, rx: 10, ry: 10, note: '① 二三趾縫下方肉墊凹窩＝裡內庭（清胃火奇穴）' },
-          'REFLEX-EYE-TRAP': { cx: 162, cy: 76, rx: 34, ry: 14, note: '① 二三趾根管眼、四五趾根管耳，前掌橫帶＝斜方肌區' },
-          'REFLEX-LIVER-HEART': { cx: 145, cy: 108, rx: 18, ry: 18, note: '① 左腳底外側＝心區；右腳底外側＝肝膽區' },
-          'REFLEX-STOMACH': { cx: 192, cy: 118, rx: 14, ry: 26, note: '① 內側足弓凹陷帶＝胃・脾・十二指腸區（由上往下刮）' },
-          'REFLEX-KIDNEY': { cx: 175, cy: 132, rx: 22, ry: 22, note: '① 足心（腎）→ 斜推至內側腳跟前緣（輸尿管→膀胱排毒鏈）' },
-          'EX-LE-SHIMIAN': { cx: 174, cy: 176, rx: 12, ry: 12, note: '① 腳後跟圓形肉墊正中心＝失眠穴（握拳輕敲100下助眠）' },
-          'REFLEX-PELVIS': { cx: 174, cy: 182, rx: 24, ry: 18, note: '① 整個腳後跟底部與兩側＝骨盆腔・生殖腺區（孕婦禁按）' }
+          'REFLEX-BRAIN': { rx0: 146, lx0: 214, cy: 48, rx: 13, ry: 16, mode: 'both', note: '雙腳皆有：大拇趾腹肉球＝大腦區（左腳管右腦、右腳管左腦）' },
+          'EX-LE-LINEITING': { rx0: 122, lx0: 238, cy: 70, rx: 9, ry: 9, mode: 'both', note: '雙腳皆有：二三趾縫下方凹窩＝裡內庭（清胃火奇穴）' },
+          'REFLEX-EYE-TRAP': { rx0: 114, lx0: 246, cy: 82, rx: 28, ry: 12, mode: 'both', note: '雙腳皆有：二三趾根管眼、四五趾根管耳、前掌橫帶＝斜方肌' },
+          'REFLEX-LIVER': { rx0: 98, lx0: 262, cy: 114, rx: 16, ry: 20, mode: 'rightOnly', note: '🟢 僅限【右腳底】外側（第4、5趾下方）＝肝膽反射區！' },
+          'REFLEX-HEART': { rx0: 98, lx0: 262, cy: 114, rx: 16, ry: 20, mode: 'leftOnly', note: '🔴 僅限【左腳底】外側（第4、5趾下方）＝心臟・脾臟反射區！' },
+          'REFLEX-STOMACH': { rx0: 142, lx0: 218, cy: 124, rx: 12, ry: 24, mode: 'both', note: '雙腳皆有：大拇趾下方「內側足弓邊緣」＝胃・脾・十二指腸區' },
+          'REFLEX-KIDNEY': { rx0: 125, lx0: 235, cy: 132, rx: 18, ry: 18, mode: 'both', note: '雙腳皆有：由足心（腎）→ 斜推往內側腳跟前緣（膀胱排毒鏈）' },
+          'EX-LE-SHIMIAN': { rx0: 124, lx0: 236, cy: 174, rx: 11, ry: 11, mode: 'both', note: '雙腳皆有：腳後跟圓墊正中央＝失眠穴（握拳輕敲100下助眠）' },
+          'REFLEX-PELVIS': { rx0: 124, lx0: 236, cy: 178, rx: 22, ry: 16, mode: 'both', note: '雙腳皆有：整個腳後跟區域＝骨盆腔・生殖腺區（孕婦禁按）' }
         };
         const cfg = posMap[pointId] || posMap['REFLEX-KIDNEY'];
+        const showRight = cfg.mode === 'both' || cfg.mode === 'rightOnly';
+        const showLeft = cfg.mode === 'both' || cfg.mode === 'leftOnly';
+
         return `
           <svg viewBox="0 0 360 220" class="closeup-svg" xmlns="http://www.w3.org/2000/svg">
             ${commonDefs}
             <rect width="360" height="220" rx="12" fill="#F8F4EC" />
-            <!-- 足底板輪廓與五趾 -->
-            <ellipse cx="196" cy="38" rx="14" ry="18" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.8"/>
-            <ellipse cx="171" cy="36" rx="8" ry="13" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
-            <ellipse cx="153" cy="40" rx="7.5" ry="12" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
-            <ellipse cx="137" cy="47" rx="7" ry="11" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
-            <ellipse cx="123" cy="57" rx="6.5" ry="9.5" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
-            <path d="M120,68 C112,98 122,135 138,168 C145,192 158,202 176,202 C194,202 205,188 204,162 C202,135 196,112 206,82 C212,66 208,54 192,54 L132,58 Z" fill="#EFE6D5" stroke="#5A5246" stroke-width="2"/>
-            ${pointId === 'REFLEX-KIDNEY' ? `
-              <path d="M168,112 Q182,135 198,158" fill="none" stroke="#2A483A" stroke-width="4" marker-end="url(#forceArrow)"/>
-            ` : ''}
-            <ellipse cx="${cfg.cx}" cy="${cfg.cy}" rx="${cfg.rx}" ry="${cfg.ry}" fill="rgba(184,61,46,0.32)" stroke="#B83D2E" stroke-width="2"/>
-            <circle cx="${cfg.cx}" cy="${cfg.cy}" r="5.5" fill="#B83D2E" stroke="#FFF" stroke-width="1.5"/>
-            <text x="180" y="215" text-anchor="middle" fill="#B83D2E" font-size="11" font-weight="bold">${cfg.note}</text>
+
+            <!-- 頂部清楚標示：右腳底 vs 左腳底 與 大拇趾內側 -->
+            <text x="118" y="18" text-anchor="middle" fill="${showRight ? '#2A483A' : '#9E9689'}" font-size="11.5" font-weight="bold">
+              🦶【右腳底】${cfg.mode === 'rightOnly' ? '（★只按這隻腳）' : ''}
+            </text>
+            <text x="242" y="18" text-anchor="middle" fill="${showLeft ? '#B83D2E' : '#9E9689'}" font-size="11.5" font-weight="bold">
+              🦶【左腳底】${cfg.mode === 'leftOnly' ? '（★只按這隻腳）' : ''}
+            </text>
+            <text x="180" y="42" text-anchor="middle" fill="#655E53" font-size="9.5" font-weight="bold">←大拇趾(內側)→</text>
+            <text x="52" y="65" text-anchor="middle" fill="#8C6D46" font-size="9">小趾(外側)</text>
+            <text x="308" y="65" text-anchor="middle" fill="#8C6D46" font-size="9">小趾(外側)</text>
+
+            <!-- 左側畫布：右足底輪廓 (大拇趾在右 x=146) -->
+            <g opacity="${showRight ? '1' : '0.32'}">
+              <ellipse cx="146" cy="46" rx="12" ry="16" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
+              <ellipse cx="124" cy="44" rx="7" ry="12" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.4"/>
+              <ellipse cx="108" cy="48" rx="6.5" ry="11" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.4"/>
+              <ellipse cx="94" cy="54" rx="6" ry="9.5" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.4"/>
+              <ellipse cx="82" cy="63" rx="5.5" ry="8.5" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.4"/>
+              <path d="M78,74 C72,102 80,136 94,168 C100,190 110,198 126,198 C142,198 152,185 150,162 C148,136 144,114 152,86 C156,72 152,62 138,62 L88,65 Z" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.8"/>
+              ${showRight ? `
+                ${pointId === 'REFLEX-KIDNEY' ? `<path d="M118,116 Q132,138 146,158" fill="none" stroke="#2A483A" stroke-width="3.5" marker-end="url(#forceArrow)"/>` : ''}
+                <ellipse cx="${cfg.rx0}" cy="${cfg.cy}" rx="${cfg.rx}" ry="${cfg.ry}" fill="rgba(184,61,46,0.34)" stroke="#B83D2E" stroke-width="2"/>
+                <circle cx="${cfg.rx0}" cy="${cfg.cy}" r="5" fill="#B83D2E" stroke="#FFF" stroke-width="1.5"/>
+              ` : `
+                <text x="116" y="130" text-anchor="middle" fill="#7D2216" font-size="10.5" font-weight="bold">✕ 右腳無心區</text>
+              `}
+            </g>
+
+            <!-- 右側畫布：左足底輪廓 (大拇趾在左 x=214) -->
+            <g opacity="${showLeft ? '1' : '0.32'}">
+              <ellipse cx="214" cy="46" rx="12" ry="16" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
+              <ellipse cx="236" cy="44" rx="7" ry="12" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.4"/>
+              <ellipse cx="252" cy="48" rx="6.5" ry="11" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.4"/>
+              <ellipse cx="266" cy="54" rx="6" ry="9.5" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.4"/>
+              <ellipse cx="278" cy="63" rx="5.5" ry="8.5" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.4"/>
+              <path d="M282,74 C288,102 280,136 266,168 C260,190 250,198 234,198 C218,198 208,185 210,162 C212,136 216,114 208,86 C204,72 208,62 222,62 L272,65 Z" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.8"/>
+              ${showLeft ? `
+                ${pointId === 'REFLEX-KIDNEY' ? `<path d="M242,116 Q228,138 214,158" fill="none" stroke="#2A483A" stroke-width="3.5" marker-end="url(#forceArrow)"/>` : ''}
+                <ellipse cx="${cfg.lx0}" cy="${cfg.cy}" rx="${cfg.rx}" ry="${cfg.ry}" fill="rgba(184,61,46,0.34)" stroke="#B83D2E" stroke-width="2"/>
+                <circle cx="${cfg.lx0}" cy="${cfg.cy}" r="5" fill="#B83D2E" stroke="#FFF" stroke-width="1.5"/>
+              ` : `
+                <text x="244" y="130" text-anchor="middle" fill="#7D2216" font-size="10.5" font-weight="bold">✕ 左腳無肝區</text>
+              `}
+            </g>
+
+            <text x="180" y="214" text-anchor="middle" fill="#B83D2E" font-size="10.5" font-weight="bold">${cfg.note}</text>
           </svg>
         `;
       }
