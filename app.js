@@ -623,8 +623,8 @@ function renderBodyCanvas() {
       </g>
     `);
 
-    // 正面與背面全身視圖繪製左右對稱鏡像點
-    if ((state.currentView === 'front' || state.currentView === 'back') && Math.abs(coord.x - 200) > 4) {
+    // 正面、背面與頭面部特寫視圖繪製左右對稱鏡像點（正中線 x=200 單穴除外）
+    if (['front', 'back', 'head'].includes(state.currentView) && Math.abs(coord.x - 200) > 4) {
       const mirrorX = 400 - coord.x;
       nodesMarkup.push(`
         <g class="${statusClass}" data-point-id="${pt.id}" aria-hidden="true">
@@ -1217,6 +1217,16 @@ function toggleTimer() {
       secEl.textContent = '✓';
       playSingingBowl('press');
       speakGuide('按揉完成，請於下方點擊紀錄您的按後痛感');
+      return;
+    }
+
+    // 若為左右雙穴，在計時過半（剩餘 30 秒）時自動提示「換另一側按揉」
+    const halfSec = Math.floor(totalDurationSec / 2);
+    if (point.massageGuide.rhythm.bilateral && state.timer.totalTimeLeft === halfSec) {
+      playSingingBowl('press');
+      speakGuide('已滿三十秒，若單手按揉請換另一側');
+      phaseEl.textContent = '🔄 請換另一側・深按';
+      secEl.textContent = `${state.timer.phaseTimeLeft}s`;
       return;
     }
 
