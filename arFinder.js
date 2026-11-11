@@ -5,7 +5,7 @@ export const WASM_PATH = `${VISION_CDN}/wasm`;
 export const HAND_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 export const FACE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
-// 支援 AR 視覺定位的穴位清單與模式映射（共 13 個手部與臉部黃金穴位）
+// 支援 AR 視覺定位的穴位清單與模式映射（手部與臉部共 19 個穴位，含小兒手部五大穴與護眼四白穴）
 export const AR_SUPPORTED_POINTS = {
   // 手部穴位 (HandLandmarker 21 點骨骼追蹤)
   LI4: { mode: 'hand', name: '合谷', hint: '請將「手背或手掌」張開對準鏡頭，紅點即為第二掌骨中點合谷穴' },
@@ -15,10 +15,17 @@ export const AR_SUPPORTED_POINTS = {
   PC6: { mode: 'hand', name: '內關', hint: '請將「手掌心與手腕內側」對準鏡頭（露出手腕），自動換算 2 寸標出內關穴' },
   HT7: { mode: 'hand', name: '神門', hint: '請將「手掌心與手腕橫紋」對準鏡頭，標出小指側豌豆骨旁神門穴' },
   SI3: { mode: 'hand', name: '後谿', hint: '請將手掌「小指外側邊緣」對準鏡頭，標出第五掌骨頭後方後谿穴' },
+  // 小兒推拿手部新增專屬穴位
+  'PED-PI': { mode: 'hand', name: '小兒脾經', hint: '請將「大拇指掌面/橈側」對準鏡頭，標示推拿脾經路徑（旋推補脾、推向指尖清脾）' },
+  'PED-BANMEN': { mode: 'hand', name: '小兒板門', hint: '請將「大拇指根部大魚際」對準鏡頭，鎖定肌肉正中央板門穴（健脾消食）' },
+  'PED-SIHENGWEN': { mode: 'hand', name: '小兒四橫紋', hint: '請將「食、中、無名、小指掌面」對準鏡頭，標示四指第一指間關節橫紋（消疳積）' },
+  'PED-XIAOTIANXIN': { mode: 'hand', name: '小兒小天心', hint: '請將「手掌根部」對準鏡頭，標示大小魚際交界凹陷處小天心（鎮驚安神清心火）' },
+  'PED-TIANHESHI': { mode: 'hand', name: '小兒天河水', hint: '請將「手掌心與前臂內側」對準鏡頭，標出腕橫紋至肘橫紋推撫路徑（清熱退燒）' },
   // 臉部穴位 (FaceLandmarker 478 點網格追蹤)
   'EX-HN3': { mode: 'face', name: '印堂', hint: '請將臉部對準前鏡頭，自動鎖定兩眉頭連線正中央「印堂穴」' },
   BL2: { mode: 'face', name: '攢竹', hint: '請將臉部對準前鏡頭，自動鎖定雙眉眉頭下方眶上切迹「攢竹穴」' },
   'EX-HN5': { mode: 'face', name: '太陽', hint: '請將臉部微側對準鏡頭，自動鎖定眉梢與眼尾後方凹窩「太陽穴」' },
+  ST2: { mode: 'face', name: '四白', hint: '請將臉部對準前鏡頭，自動鎖定雙眼瞳孔正下方眶下孔凹窩「四白穴」（護眼明目必按）' },
   LI20: { mode: 'face', name: '迎香', hint: '請將臉部對準鏡頭，自動鎖定左右鼻翼外緣法令紋溝「迎香穴」' },
   TE17: { mode: 'face', name: '翳風', hint: '請將臉部微側露出耳垂，鎖定耳垂正後方凹窩「翳風穴」' },
   GV20: { mode: 'face', name: '百會', hint: '請將臉部正對鏡頭，沿鼻樑眉心中線向上標示頭頂正中央「百會穴」方位' }
@@ -167,7 +174,73 @@ function computeHandAcupoints(landmarks) {
     y: w.y + radialVec.y * 0.65 - palmVec.y * 0.28
   };
 
-  return { LI4: li4, LU10: lu10, PC8: pc8, LU7: lu7, SI3: si3, HT7: ht7, PC6: pc6 };
+  // 8. 小兒脾經 (PED-PI)：大拇指末節螺紋面與橈側緣（指尖 4 至指間關節 3）
+  const tIP = landmarks[3];
+  const tTIP = landmarks[4];
+  const pedPi = {
+    id: 'PED-PI',
+    name: '小兒脾經 (拇指面)',
+    x: (tIP.x + tTIP.x) * 0.5,
+    y: (tIP.y + tTIP.y) * 0.5,
+    arrowTo: { x: tTIP.x, y: tTIP.y },
+    hint: '指尖往指根推為補，指根往指尖推為清'
+  };
+
+  // 9. 小兒板門 (PED-BANMEN)：手掌大魚際肌肉隆起正中央（w, tCMC, tMCP 重心）
+  const pedBanmen = {
+    id: 'PED-BANMEN',
+    name: '小兒板門 (大魚際)',
+    x: (w.x + tCMC.x + tMCP.x) / 3,
+    y: (w.y + tCMC.y + tMCP.y) / 3
+  };
+
+  // 10. 小兒小天心 (PED-XIAOTIANXIN)：手腕橫紋正中直上、大小魚際交界凹陷處
+  const pedXiaotianxin = {
+    id: 'PED-XIAOTIANXIN',
+    name: '小兒小天心 (掌根凹窩)',
+    x: w.x + (mMCP.x - w.x) * 0.16,
+    y: w.y + (mMCP.y - w.y) * 0.16
+  };
+
+  // 11. 小兒四橫紋 (PED-SIHENGWEN)：食、中、無名、小指四指掌面近端指間關節（PIP）橫紋
+  const iPIP = landmarks[6];
+  const mPIP = landmarks[10];
+  const rPIP = landmarks[14];
+  const pPIP = landmarks[18];
+  const pedSihengwen = {
+    id: 'PED-SIHENGWEN',
+    name: '小兒四橫紋',
+    x: (iPIP.x + mPIP.x + rPIP.x + pPIP.x) * 0.25,
+    y: (iPIP.y + mPIP.y + rPIP.y + pPIP.y) * 0.25,
+    multiPoints: [iPIP, mPIP, rPIP, pPIP]
+  };
+
+  // 12. 小兒天河水 (PED-TIANHESHI)：腕橫紋中點沿前臂正中向肘橫紋推撫之經路
+  const pedTianheshi = {
+    id: 'PED-TIANHESHI',
+    name: '小兒天河水 (腕向肘)',
+    x: w.x - palmVec.x * 0.55,
+    y: w.y - palmVec.y * 0.55,
+    strokeLine: {
+      from: { x: w.x, y: w.y },
+      to: { x: w.x - palmVec.x * 0.95, y: w.y - palmVec.y * 0.95 }
+    }
+  };
+
+  return {
+    LI4: li4,
+    LU10: lu10,
+    PC8: pc8,
+    LU7: lu7,
+    SI3: si3,
+    HT7: ht7,
+    PC6: pc6,
+    'PED-PI': pedPi,
+    'PED-BANMEN': pedBanmen,
+    'PED-XIAOTIANXIN': pedXiaotianxin,
+    'PED-SIHENGWEN': pedSihengwen,
+    'PED-TIANHESHI': pedTianheshi
+  };
 }
 
 // 根據 478 個臉部特徵點計算臉部穴位座標
@@ -200,6 +273,18 @@ function computeFaceAcupoints(landmarks) {
     y: rightMid.y + (landmarks[356].y - rightMid.y) * 0.45
   };
 
+  // 四白 (ST2)：雙眼瞳孔 (#468, #473) 直下，眶下緣下方凹窩 (#111, #340 眶下孔)
+  const pupilLeftY = landmarks[468] ? landmarks[468].y : landmarks[159].y;
+  const pupilRightY = landmarks[473] ? landmarks[473].y : landmarks[386].y;
+  const st2Left = {
+    x: landmarks[111].x,
+    y: landmarks[111].y + (landmarks[111].y - pupilLeftY) * 0.38
+  };
+  const st2Right = {
+    x: landmarks[340].x,
+    y: landmarks[340].y + (landmarks[340].y - pupilRightY) * 0.38
+  };
+
   // 迎香 (LI20)：左右鼻翼外緣中點與法令紋交界 (#98, #327 略向外側 #205, #425 偏移)
   const li20Left = {
     x: landmarks[98].x + (landmarks[205].x - landmarks[98].x) * 0.25,
@@ -230,6 +315,7 @@ function computeFaceAcupoints(landmarks) {
     'EX-HN3': { id: 'EX-HN3', name: '印堂', points: [yintang] },
     BL2: { id: 'BL2', name: '攢竹', points: [bl2Left, bl2Right] },
     'EX-HN5': { id: 'EX-HN5', name: '太陽', points: [taiyangLeft, taiyangRight] },
+    ST2: { id: 'ST2', name: '四白', points: [st2Left, st2Right] },
     LI20: { id: 'LI20', name: '迎香', points: [li20Left, li20Right] },
     TE17: { id: 'TE17', name: '翳風(耳垂後)', points: [te17Left, te17Right] },
     GV20: { id: 'GV20', name: '百會(頭頂中線)', points: [gv20Top], midline: [landmarks[168], gv20Top] }
@@ -516,6 +602,51 @@ function renderArLoop() {
               ctx.moveTo(p.wristOrigin.x * W, p.wristOrigin.y * H);
               ctx.lineTo(p.x * W, p.y * H);
               ctx.stroke();
+              ctx.restore();
+            }
+
+            // 🌊 小兒天河水：手腕向手肘之推撫發光動態虛線箭頭
+            if (p.id === 'PED-TIANHESHI' && isPrimary && p.strokeLine) {
+              ctx.save();
+              ctx.strokeStyle = '#2E7D32';
+              ctx.lineWidth = 4;
+              ctx.setLineDash([6, 4]);
+              ctx.beginPath();
+              ctx.moveTo(p.strokeLine.from.x * W, p.strokeLine.from.y * H);
+              ctx.lineTo(p.strokeLine.to.x * W, p.strokeLine.to.y * H);
+              ctx.stroke();
+              // 繪製前臂箭頭
+              const angle = Math.atan2(
+                (p.strokeLine.to.y - p.strokeLine.from.y) * H,
+                (p.strokeLine.to.x - p.strokeLine.from.x) * W
+              );
+              ctx.fillStyle = '#2E7D32';
+              ctx.beginPath();
+              ctx.arc(p.strokeLine.to.x * W, p.strokeLine.to.y * H, 7, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+
+            // ✋ 小兒四橫紋：標繪食、中、無名、小指四指指間橫紋連線
+            if (p.id === 'PED-SIHENGWEN' && isPrimary && p.multiPoints) {
+              ctx.save();
+              ctx.strokeStyle = '#B83D2E';
+              ctx.lineWidth = 3.5;
+              ctx.beginPath();
+              p.multiPoints.forEach((pt, idx) => {
+                if (idx === 0) ctx.moveTo(pt.x * W, pt.y * H);
+                else ctx.lineTo(pt.x * W, pt.y * H);
+              });
+              ctx.stroke();
+              p.multiPoints.forEach((pt) => {
+                ctx.beginPath();
+                ctx.arc(pt.x * W, pt.y * H, 5 * pulse, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFD54F';
+                ctx.fill();
+                ctx.strokeStyle = '#B83D2E';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+              });
               ctx.restore();
             }
 
