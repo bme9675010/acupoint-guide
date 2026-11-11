@@ -1,0 +1,1209 @@
+:root {
+  --bg-paper: #F6F2E9;
+  --bg-card: #FAF7F0;
+  --bg-parchment: #EBE3D2;
+  --ink-dark: #23211E;
+  --ink-muted: #655E53;
+  --ink-light: #8E8577;
+  --herb-deep: #2A483A;
+  --herb-mid: #476C59;
+  --herb-soft: #DCE6DF;
+  --cinnabar: #B83D2E;
+  --cinnabar-soft: #F7E3DF;
+  --amber-gold: #C4893B;
+  --amber-soft: #F6ECD9;
+  --border-ink: rgba(101, 94, 83, 0.22);
+  --shadow-soft: 0 10px 30px rgba(35, 33, 30, 0.08);
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --font-serif: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--bg-paper);
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(196, 137, 59, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(42, 72, 58, 0.06) 0%, transparent 50%);
+  color: var(--ink-dark);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* 頂部宣紙導覽列與子午流注橫幅 */
+.top-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: rgba(246, 242, 233, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-ink);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.seal-stamp {
+  width: 38px;
+  height: 38px;
+  background: var(--cinnabar);
+  color: #FFF9F2;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.15;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  border-radius: 6px;
+  border: 2px solid #962A1D;
+  box-shadow: inset 0 0 0 1px rgba(255, 249, 242, 0.45);
+  letter-spacing: 1px;
+  user-select: none;
+}
+
+.brand-title {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--herb-deep);
+  letter-spacing: 0.05em;
+}
+
+.brand-subtitle {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
+
+/* 當下時辰子午流注膠囊 */
+.ziwu-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-ink);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+
+.ziwu-banner:hover {
+  border-color: var(--amber-gold);
+  transform: translateY(-1px);
+}
+
+.ziwu-badge {
+  background: var(--herb-deep);
+  color: #FAF7F0;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: var(--font-serif);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.ziwu-text {
+  color: var(--ink-dark);
+  font-weight: 500;
+}
+
+/* 處方籤與症狀快篩列 */
+.filter-bar {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-ink);
+  background: rgba(250, 247, 240, 0.65);
+}
+
+.preset-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+.preset-row::-webkit-scrollbar {
+  display: none;
+}
+
+.preset-card {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-ink);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-card:hover,
+.preset-card.active {
+  background: var(--herb-deep);
+  color: #FAF7F0;
+  border-color: var(--herb-deep);
+  box-shadow: 0 4px 12px rgba(42, 72, 58, 0.2);
+}
+
+.preset-card.active .preset-sub {
+  color: rgba(250, 247, 240, 0.8);
+}
+
+.preset-icon {
+  font-size: 1.2rem;
+}
+
+.preset-title {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.preset-sub {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
+.symptom-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-top: 6px;
+  scrollbar-width: none;
+}
+.symptom-tags-row::-webkit-scrollbar {
+  display: none;
+}
+
+.tag-label {
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  font-family: var(--font-serif);
+}
+
+.symptom-chip {
+  flex: 0 0 auto;
+  border: 1px solid var(--border-ink);
+  background: transparent;
+  color: var(--ink-dark);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.symptom-chip.active {
+  background: var(--cinnabar);
+  color: #FFF;
+  border-color: var(--cinnabar);
+}
+
+/* 主雙欄版面 */
+.main-workspace {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 20px;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 18px 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .main-workspace {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+}
+
+/* 左側：人體經絡畫布區 */
+.body-canvas-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-ink);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.canvas-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border-ink);
+}
+
+/* 🎵 整套處方連續自動跟練播放列 */
+.playlist-banner {
+  margin: 8px 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #2A483A 0%, #1E352A 100%);
+  color: #FAF7F0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 6px 18px rgba(42, 72, 58, 0.22);
+}
+
+.playlist-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.playlist-title {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #F4C476;
+}
+
+.playlist-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.playlist-step-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(250, 247, 240, 0.85);
+  font-size: 0.78rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.playlist-step-pill.current {
+  background: var(--cinnabar);
+  color: #FFF;
+  border-color: #FFF;
+  font-weight: 700;
+}
+
+.playlist-step-pill.done {
+  background: rgba(143, 193, 166, 0.28);
+  color: #B9E4C9;
+}
+
+.btn-playlist-play {
+  border: none;
+  background: var(--amber-gold);
+  color: #FFF;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 9px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  white-space: nowrap;
+}
+
+.btn-playlist-play.playing {
+  background: var(--cinnabar);
+}
+
+.view-tabs {
+  display: flex;
+  background: var(--bg-parchment);
+  padding: 3px;
+  border-radius: 10px;
+  gap: 3px;
+  overflow-x: auto;
+  max-width: 100%;
+  scrollbar-width: none;
+}
+.view-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.view-btn {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  padding: 6px 11px;
+  border-radius: 8px;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-btn.active {
+  background: var(--herb-deep);
+  color: #FFF;
+  box-shadow: 0 2px 6px rgba(42, 72, 58, 0.25);
+}
+
+.xray-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  background: var(--bg-paper);
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-ink);
+}
+
+.xray-slider {
+  width: 68px;
+  accent-color: var(--herb-deep);
+  cursor: pointer;
+}
+
+.canvas-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.zoom-toggle-btn {
+  border: 1px solid var(--herb-deep);
+  background: var(--herb-soft);
+  color: var(--herb-deep);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.zoom-toggle-btn.active {
+  background: var(--herb-deep);
+  color: #FFF;
+}
+
+.reset-zoom-floating {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+  border: 1px solid var(--herb-deep);
+  background: rgba(250, 247, 240, 0.94);
+  color: var(--herb-deep);
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 6px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* SVG 畫布舞台 */
+.svg-stage {
+  position: relative;
+  width: 100%;
+  height: 580px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(235, 227, 210, 0.65), rgba(250, 247, 240, 0.2) 70%);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+@media (max-width: 600px) {
+  .svg-stage {
+    height: 490px;
+  }
+}
+
+.body-svg {
+  width: 100%;
+  height: 100%;
+  max-width: 400px;
+  user-select: none;
+}
+
+/* 水印書法字 */
+.stage-watermark {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  writing-mode: vertical-rl;
+  font-family: var(--font-serif);
+  color: rgba(101, 94, 83, 0.28);
+  font-size: 1.05rem;
+  letter-spacing: 0.35em;
+  pointer-events: none;
+  user-select: none;
+}
+
+.stage-legend {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  pointer-events: none;
+}
+
+.legend-items {
+  display: flex;
+  gap: 12px;
+  background: rgba(246, 242, 233, 0.88);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-ink);
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+/* SVG 內部骨骼圖層與經絡線條 */
+.skeleton-layer {
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.meridian-line {
+  fill: none;
+  stroke: var(--amber-gold);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4;
+  opacity: 0.55;
+  animation: meridianFlow 18s linear infinite;
+}
+
+@keyframes meridianFlow {
+  to {
+    stroke-dashoffset: -180;
+  }
+}
+
+/* 穴位節點與光暈 */
+.acupoint-node {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.acupoint-pulse {
+  fill: var(--cinnabar);
+  opacity: 0;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.acupoint-node.highlighted .acupoint-pulse,
+.acupoint-node.selected .acupoint-pulse {
+  opacity: 0.35;
+  animation: pulseRing 1.8s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.acupoint-core {
+  fill: var(--herb-deep);
+  stroke: #FAF7F0;
+  stroke-width: 2;
+  transition: all 0.2s ease;
+}
+
+.acupoint-node.highlighted .acupoint-core {
+  fill: var(--amber-gold);
+  r: 7.5;
+}
+
+.acupoint-node.selected .acupoint-core {
+  fill: var(--cinnabar);
+  r: 8.5;
+  stroke: #FFF;
+  stroke-width: 2.5;
+}
+
+.acupoint-node.dimmed {
+  opacity: 0.25;
+}
+
+.acupoint-label {
+  font-family: var(--font-serif);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--ink-dark);
+  paint-order: stroke;
+  stroke: #FAF7F0;
+  stroke-width: 3.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.acupoint-node.selected .acupoint-label {
+  fill: var(--cinnabar);
+  font-size: 12.5px;
+}
+
+/* 右側：穴位詳情與互動教學面板 */
+.inspector-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-ink);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 22px;
+  position: sticky;
+  top: 82px;
+}
+
+.point-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-ink);
+}
+
+.point-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.point-name {
+  font-family: var(--font-serif);
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--herb-deep);
+}
+
+.point-code {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cinnabar);
+  background: var(--cinnabar-soft);
+  padding: 2px 9px;
+  border-radius: 6px;
+}
+
+.point-pinyin {
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+}
+
+.point-meridian-bar {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.84rem;
+  color: var(--ink-muted);
+}
+
+.meridian-pill {
+  background: var(--herb-soft);
+  color: var(--herb-deep);
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* 孕婦禁忌警示條 */
+.caution-banner {
+  margin-top: 12px;
+  padding: 9px 13px;
+  border-radius: var(--radius-md);
+  background: var(--cinnabar-soft);
+  border-left: 4px solid var(--cinnabar);
+  color: #7D2216;
+  font-size: 0.83rem;
+  font-weight: 500;
+}
+
+.caution-banner.safe {
+  background: var(--amber-soft);
+  border-left-color: var(--amber-gold);
+  color: #6B4918;
+}
+
+/* 詳情三段式分頁 Tabs */
+.detail-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: var(--bg-parchment);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  margin: 16px 0;
+}
+
+.detail-tab-btn {
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.detail-tab-btn.active {
+  background: var(--bg-card);
+  color: var(--herb-deep);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.tab-pane {
+  display: none;
+  animation: fadeIn 0.22s ease;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.info-section {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-ink);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.info-section h4 {
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  color: var(--herb-deep);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-section p {
+  font-size: 0.9rem;
+  color: var(--ink-dark);
+}
+
+/* 微距解剖與手指同身寸特寫卡 */
+.closeup-card {
+  margin-top: 14px;
+  background: var(--bg-paper);
+  border: 1.5px solid rgba(196, 137, 59, 0.45);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.closeup-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--amber-soft);
+  border-bottom: 1px solid rgba(196, 137, 59, 0.3);
+  font-family: var(--font-serif);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #6B4918;
+}
+
+.closeup-badge {
+  background: var(--cinnabar);
+  color: #FFF;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.closeup-svg-wrap {
+  width: 100%;
+  background: #F8F4EC;
+  display: flex;
+  justify-content: center;
+}
+
+.closeup-svg {
+  width: 100%;
+  height: auto;
+  max-height: 215px;
+  display: block;
+}
+
+/* 三步摸骨定位清單與按對/按偏檢測盒 */
+.steps-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.steps-list li {
+  background: var(--bg-card);
+  border-left: 3px solid var(--herb-deep);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  color: var(--ink-dark);
+}
+
+.hit-check-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.hit-box {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+.hit-box.correct {
+  background: #E8F2EC;
+  border: 1px solid rgba(42, 72, 58, 0.3);
+  color: #1D3A2B;
+}
+
+.hit-box.wrong {
+  background: #FAF0ED;
+  border: 1px solid rgba(184, 61, 46, 0.28);
+  color: #70261C;
+}
+
+/* 互動式頌缽呼吸跟練計時器 */
+.timer-box {
+  background: linear-gradient(145deg, #2A483A 0%, #1F362B 100%);
+  color: #FAF7F0;
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-align: center;
+  margin-top: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.timer-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: rgba(250, 247, 240, 0.78);
+  margin-bottom: 12px;
+}
+
+.sound-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.breathing-orb-wrap {
+  position: relative;
+  width: 148px;
+  height: 148px;
+  margin: 10px auto 16px;
+  display: grid;
+  place-items: center;
+}
+
+.breathing-orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(196, 137, 59, 0.55);
+  background: radial-gradient(circle, rgba(196, 137, 59, 0.32) 0%, rgba(42, 72, 58, 0.1) 70%);
+  transition: transform 0.8s ease-in-out, background-color 0.6s ease;
+}
+
+.breathing-orb-ring.pressing {
+  transform: scale(0.76);
+  border-color: #E5A952;
+  background: radial-gradient(circle, rgba(184, 61, 46, 0.55) 0%, rgba(196, 137, 59, 0.25) 75%);
+}
+
+.breathing-orb-ring.releasing {
+  transform: scale(1.12);
+  border-color: #8FC1A6;
+}
+
+.orb-center-text {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.orb-phase {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.orb-seconds {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #F4C476;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.orb-total-left {
+  font-size: 0.74rem;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.timer-btn-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-primary-timer {
+  border: none;
+  background: var(--amber-gold);
+  color: #FFF;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 10px 24px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+.btn-primary-timer:hover {
+  background: #D49645;
+  transform: translateY(-1px);
+}
+
+.btn-secondary-timer {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: #FAF7F0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* 功效標籤與配穴卡 */
+.pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tcm-pill {
+  background: var(--herb-soft);
+  color: var(--herb-deep);
+  padding: 4px 11px;
+  border-radius: 8px;
+  font-family: var(--font-serif);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.symptom-pill-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-ink);
+  color: var(--ink-dark);
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.symptom-pill-btn:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+}
+
+.pairing-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-ink);
+  border-left: 4px solid var(--amber-gold);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-top: 8px;
+}
+
+.pairing-Jump-btn {
+  flex: 0 0 auto;
+  border: 1px solid var(--herb-deep);
+  background: var(--herb-deep);
+  color: #FFF;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* 📷 AR 鏡頭找穴按鈕與全螢幕彈窗樣式 */
+.header-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.header-ar-btn {
+  border: none;
+  background: linear-gradient(135deg, var(--cinnabar) 0%, #962A1D 100%);
+  color: #FFF9F2;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.84rem;
+  padding: 8px 15px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(184, 61, 46, 0.28);
+  transition: transform 0.15s ease;
+}
+
+.header-ar-btn:hover {
+  transform: translateY(-1px);
+}
+
+.inspector-ar-btn {
+  flex: 0 0 auto;
+  border: 1.5px solid var(--cinnabar);
+  background: var(--cinnabar-soft);
+  color: var(--cinnabar);
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 0.84rem;
+  padding: 7px 13px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.inspector-ar-btn:hover {
+  background: var(--cinnabar);
+  color: #FFF;
+}
+
+.ar-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(25, 23, 20, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.ar-modal.open {
+  display: flex;
+}
+
+.ar-modal-card {
+  width: 100%;
+  max-width: 720px;
+  background: #1F2622;
+  color: #FAF7F0;
+  border: 1px solid rgba(196, 137, 59, 0.45);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
+
+.ar-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: #27352E;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ar-modal-title {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  color: #F4C476;
+}
+
+.ar-status-text {
+  font-size: 0.78rem;
+  color: rgba(250, 247, 240, 0.85);
+  margin-top: 2px;
+}
+
+.ar-header-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.ar-ctrl-btn,
+.ar-close-btn {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFF;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.ar-close-btn {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+.ar-hint-banner {
+  padding: 8px 16px;
+  background: rgba(196, 137, 59, 0.2);
+  color: #FCE9C5;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.ar-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 62dvh;
+  background: #0F1311;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ar-video,
+.ar-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ar-canvas {
+  pointer-events: none;
+}
+
+.ar-footer {
+  padding: 12px 16px;
+  background: #27352E;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ar-footer-label {
+  display: block;
+  font-size: 0.76rem;
+  color: rgba(250, 247, 240, 0.7);
+  margin-bottom: 6px;
+}
+
+.ar-point-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.ar-point-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.ar-point-chip {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #FAF7F0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.ar-point-chip.active {
+  background: var(--cinnabar);
+  border-color: #FFF;
+  font-weight: 700;
+}
