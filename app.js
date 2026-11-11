@@ -88,10 +88,24 @@ const COLLOQUIAL_SYNONYMS = {
   '坐骨神經': ['BL40', 'BL60', 'GB20'],
   '足底筋膜炎': ['KI1', 'KI3', 'BL60'],
   '腳底痛': ['KI1', 'KI3', 'BL60'],
-  '耳鳴': ['TE17', 'KI3', 'GB20'],
-  '火氣大': ['LR3', 'PC8', 'LU10', 'LI4'],
-  '嘴破': ['PC8', 'LR3', 'LI4'],
-  '口臭': ['PC8', 'ST36', 'LR3']
+  '耳鳴': ['TE17', 'KI3', 'GB20', 'REFLEX-EYE-TRAP'],
+  '火氣大': ['LR3', 'PC8', 'LU10', 'LI4', 'EX-LE-LINEITING'],
+  '嘴破': ['PC8', 'LR3', 'LI4', 'EX-LE-LINEITING'],
+  '口臭': ['PC8', 'ST36', 'LR3', 'EX-LE-LINEITING'],
+  '富貴包': ['GV14', 'GB20', 'GB21', 'SI3'],
+  '網球肘': ['LI11', 'LI4', 'LU7'],
+  '手肘痛': ['LI11', 'LI4'],
+  '皮膚癢': ['LI11', 'SP10', 'SP6'],
+  '蕁麻疹': ['LI11', 'SP10', 'SP6'],
+  '宿便': ['ST25', 'ST36', 'LI4', 'REFLEX-STOMACH'],
+  '頻尿': ['CV6', 'BL23', 'KI3'],
+  '夜尿': ['CV6', 'BL23', 'KI3', 'KI1'],
+  '腳底按摩': ['REFLEX-KIDNEY', 'KI1', 'REFLEX-STOMACH', 'EX-LE-SHIMIAN', 'REFLEX-BRAIN', 'REFLEX-EYE-TRAP'],
+  '足底反射區': ['REFLEX-KIDNEY', 'REFLEX-STOMACH', 'REFLEX-LIVER-HEART', 'REFLEX-BRAIN', 'REFLEX-EYE-TRAP', 'REFLEX-PELVIS'],
+  '腳後跟': ['EX-LE-SHIMIAN', 'REFLEX-PELVIS', 'KI3', 'BL60'],
+  '氣結': ['REFLEX-STOMACH', 'REFLEX-KIDNEY', 'REFLEX-EYE-TRAP', 'CV17'],
+  '排毒': ['REFLEX-KIDNEY', 'BL40', 'SP9', 'LR3'],
+  '爆肝': ['REFLEX-LIVER-HEART', 'LR3', 'GB20']
 };
 
 // 載入與儲存 localStorage (收藏處方 + 按後痛感體質紀錄)
@@ -515,7 +529,120 @@ function getBaseBodySvgMarkup(view, xrayOpacity) {
     `;
   }
 
-  // 新增：足腿與足底特寫視圖 (foot)
+  // 新增：🦶 足底全息反射區與奇穴視圖 (sole)
+  if (view === 'sole') {
+    return `
+      <defs>
+        <linearGradient id="soleFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#F7F0E2" />
+          <stop offset="100%" stop-color="#E6D9C2" />
+        </linearGradient>
+        <marker id="detoxArrow" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#2A483A" />
+        </marker>
+      </defs>
+
+      <text x="200" y="30" text-anchor="middle" fill="#2A483A" font-family="Noto Serif TC, serif" font-weight="bold" font-size="13.5">
+        🦶 足底全息反射區＆經外奇穴圖（可直接點擊色塊或紅點）
+      </text>
+      <text x="132" y="54" text-anchor="middle" fill="#8C584C" font-size="11.5" font-weight="bold">
+        【右足底】外側主肝膽
+      </text>
+      <text x="268" y="54" text-anchor="middle" fill="#8C584C" font-size="11.5" font-weight="bold">
+        【左足底】外側主心脾
+      </text>
+
+      <!-- 左右雙足底輪廓 -->
+      <g class="skin-layer" stroke="#5A5246" stroke-width="2" fill="url(#soleFill)">
+        <!-- 右足底 (左側畫布，大拇趾在內側 x=162) -->
+        <ellipse cx="162" cy="108" rx="18" ry="25" />
+        <ellipse cx="132" cy="104" rx="10" ry="18" />
+        <ellipse cx="110" cy="112" rx="9.5" ry="16" />
+        <ellipse cx="90" cy="124" rx="8.5" ry="14" />
+        <ellipse cx="73" cy="142" rx="8" ry="12" />
+        <path d="
+          M68,160
+          C56,215 68,295 85,375
+          C92,435 90,515 110,545
+          C128,568 158,565 168,535
+          C176,502 166,435 162,368
+          C156,305 178,242 182,188
+          C184,155 174,136 154,135
+          L82,148 Z
+        " />
+
+        <!-- 左足底 (右側畫布鏡像，大拇趾在內側 x=238) -->
+        <ellipse cx="238" cy="108" rx="18" ry="25" />
+        <ellipse cx="268" cy="104" rx="10" ry="18" />
+        <ellipse cx="290" cy="112" rx="9.5" ry="16" />
+        <ellipse cx="310" cy="124" rx="8.5" ry="14" />
+        <ellipse cx="327" cy="142" rx="8" ry="12" />
+        <path d="
+          M332,160
+          C344,215 332,295 315,375
+          C308,435 310,515 290,545
+          C272,568 242,565 232,535
+          C224,502 234,435 238,368
+          C244,305 222,242 218,188
+          C216,155 226,136 246,135
+          L318,148 Z
+        " />
+      </g>
+
+      <!-- 🎨 足底 6 大互動反射區色塊（點擊色塊也可直接選取該區） -->
+      <g class="reflex-zones-layer">
+        <!-- ① 大腦頭頸區 (大拇趾腹) -->
+        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-BRAIN" cx="162" cy="108" rx="15" ry="21" fill="rgba(196,137,59,0.28)" stroke="#C4893B" stroke-width="1.5" style="cursor:pointer;"/>
+        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-BRAIN" cx="238" cy="108" rx="15" ry="21" fill="rgba(196,137,59,0.28)" stroke="#C4893B" stroke-width="1.5" style="cursor:pointer;"/>
+
+        <!-- ② 眼耳與斜方肌橫帶 (前掌肉墊) -->
+        <path class="reflex-zone-poly" data-point-id="REFLEX-EYE-TRAP" d="M72,158 Q125,138 176,162 L174,198 Q122,186 70,198 Z" fill="rgba(42,72,58,0.18)" stroke="#2A483A" stroke-width="1.4" stroke-dasharray="3 2" style="cursor:pointer;"/>
+        <path class="reflex-zone-poly" data-point-id="REFLEX-EYE-TRAP" d="M328,158 Q275,138 224,162 L226,198 Q278,186 330,198 Z" fill="rgba(42,72,58,0.18)" stroke="#2A483A" stroke-width="1.4" stroke-dasharray="3 2" style="cursor:pointer;"/>
+
+        <!-- ③ 右腳肝膽區 / 左腳心臟區 (前掌中段外側) -->
+        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-LIVER-HEART" cx="96" cy="248" rx="22" ry="30" fill="rgba(42,115,82,0.22)" stroke="#2A483A" stroke-width="1.5" style="cursor:pointer;"/>
+        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-LIVER-HEART" cx="304" cy="248" rx="22" ry="30" fill="rgba(184,61,46,0.2)" stroke="#B83D2E" stroke-width="1.5" style="cursor:pointer;"/>
+        <text x="96" y="252" text-anchor="middle" fill="#1D4734" font-size="10" font-weight="bold" pointer-events="none">肝膽區</text>
+        <text x="304" y="252" text-anchor="middle" fill="#8A2519" font-size="10" font-weight="bold" pointer-events="none">心臟區</text>
+
+        <!-- ④ 胃・脾・十二指腸區 (內側足弓帶) -->
+        <path class="reflex-zone-poly" data-point-id="REFLEX-STOMACH" d="M148,220 C172,225 176,315 152,338 C138,325 138,245 148,220 Z" fill="rgba(212,150,69,0.28)" stroke="#B5792A" stroke-width="1.5" style="cursor:pointer;"/>
+        <path class="reflex-zone-poly" data-point-id="REFLEX-STOMACH" d="M252,220 C228,225 224,315 248,338 C262,325 262,245 252,220 Z" fill="rgba(212,150,69,0.28)" stroke="#B5792A" stroke-width="1.5" style="cursor:pointer;"/>
+
+        <!-- ⑤ 腎 → 輸尿管 → 膀胱排毒鏈 (足心斜向內側踝前緣) -->
+        <path class="reflex-zone-poly" data-point-id="REFLEX-KIDNEY" d="M126,285 Q145,342 162,395" fill="none" stroke="#2A483A" stroke-width="7" stroke-linecap="round" opacity="0.55" marker-end="url(#detoxArrow)" style="cursor:pointer;"/>
+        <path class="reflex-zone-poly" data-point-id="REFLEX-KIDNEY" d="M274,285 Q255,342 238,395" fill="none" stroke="#2A483A" stroke-width="7" stroke-linecap="round" opacity="0.55" marker-end="url(#detoxArrow)" style="cursor:pointer;"/>
+
+        <!-- ⑥ 骨盆腔與生殖腺反射區 (整個腳後跟圓墊) -->
+        <circle class="reflex-zone-poly" data-point-id="REFLEX-PELVIS" cx="132" cy="485" r="36" fill="rgba(184,61,46,0.16)" stroke="#B83D2E" stroke-width="1.5" stroke-dasharray="4 2" style="cursor:pointer;"/>
+        <circle class="reflex-zone-poly" data-point-id="REFLEX-PELVIS" cx="268" cy="485" r="36" fill="rgba(184,61,46,0.16)" stroke="#B83D2E" stroke-width="1.5" stroke-dasharray="4 2" style="cursor:pointer;"/>
+
+        <!-- 湧泉穴人字紋 -->
+        <path d="M98,228 Q132,196 164,228" fill="none" stroke="#5A5246" stroke-width="2.2" stroke-linecap="round" pointer-events="none"/>
+        <path d="M236,228 Q268,196 302,228" fill="none" stroke="#5A5246" stroke-width="2.2" stroke-linecap="round" pointer-events="none"/>
+      </g>
+
+      <!-- 🦴 足底骨骼與足底筋膜透視層 -->
+      <g class="skeleton-layer" style="opacity: ${xrayOpacity};" stroke="#8C6D46" stroke-width="2" fill="none" pointer-events="none">
+        <!-- 第 1~5 跖骨與跟骨結節 -->
+        <line x1="158" y1="145" x2="148" y2="295" stroke-width="4" opacity="0.45"/>
+        <line x1="132" y1="145" x2="132" y2="305" stroke-width="3" opacity="0.45"/>
+        <line x1="108" y1="155" x2="115" y2="310" stroke-width="3" opacity="0.45"/>
+        <circle cx="132" cy="485" r="22" stroke-dasharray="3 2" opacity="0.5"/>
+        <circle cx="268" cy="485" r="22" stroke-dasharray="3 2" opacity="0.5"/>
+      </g>
+
+      <rect x="24" y="592" width="352" height="58" rx="10" fill="rgba(42,72,58,0.08)" stroke="rgba(42,72,58,0.25)"/>
+      <text x="200" y="614" text-anchor="middle" fill="#2A483A" font-size="11.5" font-weight="bold">
+        💡 居家省力秘訣：不必用手死命摳！將「高爾夫球/網球」踩在腳底滾動，
+      </text>
+      <text x="200" y="634" text-anchor="middle" fill="#B83D2E" font-size="11.5" font-weight="bold">
+        並於按完後 15 分鐘內喝下 300～500cc 溫開水，排毒消腫效果翻倍！
+      </text>
+    `;
+  }
+
+  // 足腿與足底特寫視圖 (foot)
   return `
     <defs>
       <linearGradient id="footFill" x1="0" y1="0" x2="0" y2="1">
@@ -623,8 +750,8 @@ function renderBodyCanvas() {
       </g>
     `);
 
-    // 正面、背面與頭面部特寫視圖繪製左右對稱鏡像點（正中線 x=200 單穴除外）
-    if (['front', 'back', 'head'].includes(state.currentView) && Math.abs(coord.x - 200) > 4) {
+    // 正面、背面、頭面部與足底特寫視圖繪製左右對稱鏡像點（正中線 x=200 單穴除外）
+    if (['front', 'back', 'head', 'sole'].includes(state.currentView) && Math.abs(coord.x - 200) > 4) {
       const mirrorX = 400 - coord.x;
       nodesMarkup.push(`
         <g class="${statusClass}" data-point-id="${pt.id}" aria-hidden="true">
@@ -637,10 +764,10 @@ function renderBodyCanvas() {
 
   svg.innerHTML = baseMarkup + `<g class="acupoints-layer">${nodesMarkup.join('')}</g>`;
 
-  svg.querySelectorAll('.acupoint-node').forEach((node) => {
+  svg.querySelectorAll('.acupoint-node, .reflex-zone-poly').forEach((node) => {
     node.addEventListener('click', () => {
       const pointId = node.getAttribute('data-point-id');
-      selectAcupoint(pointId, true);
+      if (pointId) selectAcupoint(pointId, true);
     });
   });
 }
@@ -654,7 +781,7 @@ function selectAcupoint(pointId, autoSwitchViewIfNeeded = false, keepTimerIfPlay
 
   // 若當前視圖沒有這個穴位，優先切換到局部特寫視圖或正反面視圖
   if (autoSwitchViewIfNeeded && !point.views[state.currentView]) {
-    const preferredOrder = ['head', 'hand', 'foot', 'front', 'back'];
+    const preferredOrder = ['sole', 'head', 'hand', 'foot', 'front', 'back'];
     const availableView = preferredOrder.find((v) => v in point.views) || Object.keys(point.views)[0];
     if (availableView) {
       state.currentView = availableView;
@@ -678,8 +805,8 @@ function applySvgZoomForPoint(point) {
   if (!svg) return;
 
   const coord = point?.views[state.currentView];
-  // 特寫視圖 (head / hand / foot) 本身已經是放大圖，不需再裁切 viewBox
-  if (!state.autoZoomEnabled || !coord || ['head', 'hand', 'foot'].includes(state.currentView)) {
+  // 特寫視圖 (head / hand / foot / sole) 本身已經是放大圖，不需再裁切 viewBox
+  if (!state.autoZoomEnabled || !coord || ['head', 'hand', 'foot', 'sole'].includes(state.currentView)) {
     svg.setAttribute('viewBox', '0 0 400 680');
     state.isZoomedIn = false;
     if (resetBtn) resetBtn.style.display = 'none';
@@ -1496,6 +1623,14 @@ function bindEvents() {
     btn.addEventListener('click', () => {
       state.currentView = btn.getAttribute('data-view');
       updateViewTabButtons();
+      const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+      if (!currentPt || !currentPt.views[state.currentView]) {
+        const defaultPointForView = ACUPOINTS.find((p) => p.views[state.currentView]);
+        if (defaultPointForView) {
+          selectAcupoint(defaultPointForView.id, false);
+          return;
+        }
+      }
       renderBodyCanvas();
       resetSvgZoom();
     });

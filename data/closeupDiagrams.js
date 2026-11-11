@@ -540,6 +540,134 @@ export function getCloseupSvgMarkup(pointId) {
           </svg>
         `;
       }
+      // 胸腹三穴：CV17 膻中、CV12 中脘、CV6 氣海關元、ST25 天樞
+      if (['CV17', 'CV12', 'CV6', 'ST25'].includes(pointId)) {
+        const yMap = { CV17: 45, CV12: 95, ST25: 135, CV6: 170 };
+        const xMap = { CV17: 180, CV12: 180, ST25: 142, CV6: 180 };
+        const labelMap = {
+          CV17: '兩乳頭水平連線 × 胸骨正中央＝膻中（往下推順氣）',
+          CV12: '心窩劍突骨尖與肚臍連線「正中間 1/2 處」＝中脘',
+          CV6: '肚臍正下方二指（氣海）至四指寬（關元）丹田區',
+          ST25: '肚臍水平往左右各量「三指寬（2寸）」＝天樞（雙穴）'
+        };
+        const tx = xMap[pointId];
+        const ty = yMap[pointId];
+        return `
+          <svg viewBox="0 0 360 220" class="closeup-svg" xmlns="http://www.w3.org/2000/svg">
+            ${commonDefs}
+            <rect width="360" height="220" rx="12" fill="#F8F4EC" />
+            <!-- 胸腹輪廓 -->
+            <path d="M98,12 L262,12 L255,205 L105,205 Z" fill="#EFE6D5" stroke="#5A5246" stroke-width="2"/>
+            <!-- 任脈正中線與肋弓劍突 -->
+            <line x1="180" y1="15" x2="180" y2="200" stroke="#8C6D46" stroke-width="1.8" stroke-dasharray="4 2"/>
+            <path d="M140,68 Q180,45 220,68" fill="none" stroke="#8C6D46" stroke-width="2.5"/>
+            <!-- 兩乳連線與肚臍 -->
+            <line x1="125" y1="45" x2="235" y2="45" stroke="#2A483A" stroke-width="1.4" stroke-dasharray="3 2"/>
+            <circle cx="180" cy="135" r="4.5" fill="none" stroke="#5A5246" stroke-width="2"/>
+            <text x="242" y="139" fill="#5A5246" font-size="10.5">← 肚臍（神闕）</text>
+            ${pointId === 'ST25' ? `
+              <rect x="142" y="125" width="34" height="20" rx="3" fill="rgba(42,72,58,0.16)" stroke="#2A483A"/>
+              <text x="159" y="139" text-anchor="middle" fill="#2A483A" font-size="9.5" font-weight="bold">3指</text>
+              <circle cx="218" cy="135" r="6" fill="#B83D2E" stroke="#FFF" stroke-width="1.5"/>
+            ` : ''}
+            ${pointId === 'CV6' ? `
+              <rect x="184" y="138" width="42" height="32" rx="4" fill="rgba(42,72,58,0.16)" stroke="#2A483A"/>
+              <text x="205" y="158" text-anchor="middle" fill="#2A483A" font-size="9.5" font-weight="bold">4指寬</text>
+            ` : ''}
+            <circle cx="${tx}" cy="${ty}" r="13" fill="rgba(184,61,46,0.25)"/>
+            <circle cx="${tx}" cy="${ty}" r="6.5" fill="#B83D2E" stroke="#FFF" stroke-width="2"/>
+            <text x="180" y="212" text-anchor="middle" fill="#B83D2E" font-size="11" font-weight="bold">${labelMap[pointId]}</text>
+          </svg>
+        `;
+      }
+      // 背腰二穴：GV14 大椎、BL23 腎俞
+      if (['GV14', 'BL23'].includes(pointId)) {
+        const isDazhui = pointId === 'GV14';
+        return `
+          <svg viewBox="0 0 360 220" class="closeup-svg" xmlns="http://www.w3.org/2000/svg">
+            ${commonDefs}
+            <rect width="360" height="220" rx="12" fill="#F8F4EC" />
+            <path d="M95,18 L265,18 L255,198 L105,198 Z" fill="#EFE6D5" stroke="#5A5246" stroke-width="2"/>
+            <line x1="180" y1="20" x2="180" y2="195" stroke="#8C6D46" stroke-width="4" stroke-dasharray="6 4"/>
+            ${isDazhui ? `
+              <circle cx="180" cy="65" r="9" fill="#8C6D46" opacity="0.45"/>
+              <text x="200" y="68" fill="#5A5246" font-size="11" font-weight="bold">← ① 低頭最凸骨（第7頸椎）</text>
+              <circle cx="180" cy="84" r="13" fill="rgba(184,61,46,0.25)"/>
+              <circle cx="180" cy="84" r="6.5" fill="#B83D2E" stroke="#FFF" stroke-width="2"/>
+              <text x="180" y="165" text-anchor="middle" fill="#B83D2E" font-size="11.5" font-weight="bold">② 凸骨正下方凹窩＝大椎穴（橫擦生熱防感冒）</text>
+            ` : `
+              <line x1="115" y1="110" x2="245" y2="110" stroke="#2A483A" stroke-width="1.5" stroke-dasharray="3 2"/>
+              <text x="180" y="96" text-anchor="middle" fill="#2A483A" font-size="10.5" font-weight="bold">① 正對前方肚臍高度（命門穴）</text>
+              <rect x="150" y="102" width="28" height="18" rx="3" fill="rgba(42,72,58,0.18)" stroke="#2A483A"/>
+              <text x="164" y="114" text-anchor="middle" fill="#2A483A" font-size="9.5" font-weight="bold">2指</text>
+              <circle cx="148" cy="110" r="12" fill="rgba(184,61,46,0.25)"/>
+              <circle cx="148" cy="110" r="6" fill="#B83D2E" stroke="#FFF" stroke-width="2"/>
+              <circle cx="212" cy="110" r="12" fill="rgba(184,61,46,0.25)"/>
+              <circle cx="212" cy="110" r="6" fill="#B83D2E" stroke="#FFF" stroke-width="2"/>
+              <text x="180" y="175" text-anchor="middle" fill="#B83D2E" font-size="11.5" font-weight="bold">② 脊椎左右各量「兩指寬」＝腎俞穴（雙掌上下搓熱）</text>
+            `}
+          </svg>
+        `;
+      }
+      // SP9 陰陵泉、LI11 曲池
+      if (pointId === 'SP9' || pointId === 'LI11') {
+        const isSp9 = pointId === 'SP9';
+        return `
+          <svg viewBox="0 0 360 220" class="closeup-svg" xmlns="http://www.w3.org/2000/svg">
+            ${commonDefs}
+            <rect width="360" height="220" rx="12" fill="#F8F4EC" />
+            ${isSp9 ? `
+              <path d="M122,18 C118,80 120,145 128,200 L225,200 C232,145 235,80 228,18 Z" fill="#EFE6D5" stroke="#5A5246" stroke-width="2"/>
+              <path d="M168,25 L168,72 Q168,95 148,108 L148,195" fill="none" stroke="#8C6D46" stroke-width="7" opacity="0.45"/>
+              <line x1="158" y1="185" x2="158" y2="118" stroke="#2A483A" stroke-width="2.5" marker-end="url(#forceArrow)"/>
+              <circle cx="164" cy="105" r="13" fill="rgba(184,61,46,0.25)"/>
+              <circle cx="164" cy="105" r="6.5" fill="#B83D2E" stroke="#FFF" stroke-width="2"/>
+              <text x="195" y="95" fill="#2A483A" font-size="11" font-weight="bold">← ① 順脛骨後緣往上推</text>
+              <text x="195" y="114" fill="#B83D2E" font-size="11" font-weight="bold">← ② 卡在膝下骨頭轉彎凹窩＝陰陵泉</text>
+            ` : `
+              <path d="M75,45 L185,115 L295,95 L295,155 L165,175 L55,95 Z" fill="#EFE6D5" stroke="#5A5246" stroke-width="2"/>
+              <path d="M185,115 L155,148" stroke="#2A483A" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="155" cy="148" r="13" fill="rgba(184,61,46,0.25)"/>
+              <circle cx="155" cy="148" r="6.5" fill="#B83D2E" stroke="#FFF" stroke-width="2"/>
+              <text x="180" y="42" text-anchor="middle" fill="#2A483A" font-size="11" font-weight="bold">① 手肘彎曲 90 度折出肘橫紋</text>
+              <text x="180" y="202" text-anchor="middle" fill="#B83D2E" font-size="11.5" font-weight="bold">② 肘橫紋「最外側盡頭」骨邊凹窩＝曲池穴</text>
+            `}
+          </svg>
+        `;
+      }
+      // 🦶 足底奇穴與 6 大反射區特寫圖
+      if (pointId.startsWith('REFLEX-') || pointId === 'EX-LE-SHIMIAN' || pointId === 'EX-LE-LINEITING') {
+        const posMap = {
+          'REFLEX-BRAIN': { cx: 196, cy: 40, rx: 16, ry: 18, note: '① 大拇趾腹肉球＝大腦區（由上往下推刮散氣結）' },
+          'EX-LE-LINEITING': { cx: 168, cy: 62, rx: 10, ry: 10, note: '① 二三趾縫下方肉墊凹窩＝裡內庭（清胃火奇穴）' },
+          'REFLEX-EYE-TRAP': { cx: 162, cy: 76, rx: 34, ry: 14, note: '① 二三趾根管眼、四五趾根管耳，前掌橫帶＝斜方肌區' },
+          'REFLEX-LIVER-HEART': { cx: 145, cy: 108, rx: 18, ry: 18, note: '① 左腳底外側＝心區；右腳底外側＝肝膽區' },
+          'REFLEX-STOMACH': { cx: 192, cy: 118, rx: 14, ry: 26, note: '① 內側足弓凹陷帶＝胃・脾・十二指腸區（由上往下刮）' },
+          'REFLEX-KIDNEY': { cx: 175, cy: 132, rx: 22, ry: 22, note: '① 足心（腎）→ 斜推至內側腳跟前緣（輸尿管→膀胱排毒鏈）' },
+          'EX-LE-SHIMIAN': { cx: 174, cy: 176, rx: 12, ry: 12, note: '① 腳後跟圓形肉墊正中心＝失眠穴（握拳輕敲100下助眠）' },
+          'REFLEX-PELVIS': { cx: 174, cy: 182, rx: 24, ry: 18, note: '① 整個腳後跟底部與兩側＝骨盆腔・生殖腺區（孕婦禁按）' }
+        };
+        const cfg = posMap[pointId] || posMap['REFLEX-KIDNEY'];
+        return `
+          <svg viewBox="0 0 360 220" class="closeup-svg" xmlns="http://www.w3.org/2000/svg">
+            ${commonDefs}
+            <rect width="360" height="220" rx="12" fill="#F8F4EC" />
+            <!-- 足底板輪廓與五趾 -->
+            <ellipse cx="196" cy="38" rx="14" ry="18" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.8"/>
+            <ellipse cx="171" cy="36" rx="8" ry="13" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
+            <ellipse cx="153" cy="40" rx="7.5" ry="12" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
+            <ellipse cx="137" cy="47" rx="7" ry="11" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
+            <ellipse cx="123" cy="57" rx="6.5" ry="9.5" fill="#EFE6D5" stroke="#5A5246" stroke-width="1.6"/>
+            <path d="M120,68 C112,98 122,135 138,168 C145,192 158,202 176,202 C194,202 205,188 204,162 C202,135 196,112 206,82 C212,66 208,54 192,54 L132,58 Z" fill="#EFE6D5" stroke="#5A5246" stroke-width="2"/>
+            ${pointId === 'REFLEX-KIDNEY' ? `
+              <path d="M168,112 Q182,135 198,158" fill="none" stroke="#2A483A" stroke-width="4" marker-end="url(#forceArrow)"/>
+            ` : ''}
+            <ellipse cx="${cfg.cx}" cy="${cfg.cy}" rx="${cfg.rx}" ry="${cfg.ry}" fill="rgba(184,61,46,0.32)" stroke="#B83D2E" stroke-width="2"/>
+            <circle cx="${cfg.cx}" cy="${cfg.cy}" r="5.5" fill="#B83D2E" stroke="#FFF" stroke-width="1.5"/>
+            <text x="180" y="215" text-anchor="middle" fill="#B83D2E" font-size="11" font-weight="bold">${cfg.note}</text>
+          </svg>
+        `;
+      }
       // KI1 湧泉
       return `
         <svg viewBox="0 0 360 220" class="closeup-svg" xmlns="http://www.w3.org/2000/svg">
