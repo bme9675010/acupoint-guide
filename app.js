@@ -1,724 +1,32 @@
-import { ACUPOINTS, SYMPTOM_PRESETS, ZIWU_LIUZHU, DIETARY_THERAPY, ZIWU_DIET } from './data/acupoints.js';
-import { getCloseupSvgMarkup } from './data/closeupDiagrams.js';
+import {
+  ACUPOINTS,
+  SYMPTOM_PRESETS,
+  ZIWU_LIUZHU,
+  DIETARY_THERAPY,
+  ZIWU_DIET,
+  EAR_SYNONYMS,
+  getCloseupSvgMarkup
+} from './data/index.js';
 import { AR_SUPPORTED_POINTS, openArModal, initArControls } from './arFinder.js';
-
-// 狀態管理
-const state = {
-  currentView: 'front',          // 'front' | 'back' | 'head' | 'hand' | 'foot'
-  selectedPointId: 'LI4',        // 預設選中合谷穴
-  activePresetId: null,          // 當前處方籤 ID
-  activeSymptomTag: null,        // 當前單一症狀篩選
-  searchQuery: '',               // 白話症狀與穴位搜尋字串
-  pregnancySafeMode: false,      // 🤰 孕期安全鎖（開啟時標示並於連播自動跳過孕婦禁穴）
-  favorites: new Set(),          // ⭐ 個人收藏穴位 ID 集合
-  painLogs: [],                  // 🩺 按後痛感與體質紀錄陣列
-  highlightedIds: new Set(),     // 高亮穴位集合
-  xrayOpacity: 0.55,             // 骨骼透視透明度 (0 ~ 1)
-  autoZoomEnabled: true,         // 點擊穴位時是否自動局部放大畫布
-  isZoomedIn: false,             // 當前畫布是否處於局部放大狀態
-  playlist: {
-    isPlaying: false,            // 是否正在跑整套處方連續自動跟練
-    queue: [],                   // 處方穴位 ID 陣列
-    currentIndex: 0,             // 目前跟練到第幾顆
-    completedIds: new Set()      // 已完成跟練的穴位
-  },
-  timer: {
-    running: false,
-    phase: 'idle',               // 'idle' | 'press' | 'release'
-    phaseTimeLeft: 0,
-    totalTimeLeft: 60,
-    intervalId: null
-  }
-};
-
-// 口語化白話症狀同義詞字典（對應穴位 ID 或標準症狀）
-const COLLOQUIAL_SYNONYMS = {
-  '宿醉': ['LR3', 'PC6', 'ST36', 'GB20'],
-  '酒醉': ['LR3', 'PC6', 'ST36'],
-  '想吐': ['PC6', 'ST36', 'CV12'],
-  '反胃': ['PC6', 'ST36', 'CV12'],
-  '暈車': ['PC6', 'GB20', 'EX-HN5'],
-  '暈船': ['PC6', 'GB20'],
-  '打嗝': ['PC6', 'CV17', 'CV12', 'ST36'],
-  '胃酸': ['PC6', 'CV12', 'ST36'],
-  '胃食道逆流': ['PC6', 'CV12', 'CV17', 'ST36'],
-  '脹氣': ['CV12', 'ST36', 'PC6', 'SP6'],
-  '肚子痛': ['ST36', 'CV12', 'LI4'],
-  '拉肚子': ['ST36', 'CV12', 'SP6'],
-  '便秘': ['ST36', 'LI4', 'CV6'],
-  '落枕': ['SI3', 'GB20', 'GB21', 'LU7'],
-  '脖子痛': ['SI3', 'GB20', 'GB21', 'GV14'],
-  '肩頸僵硬': ['GB20', 'GB21', 'SI3', 'LI4'],
-  '五十肩': ['GB21', 'LI4', 'SI3'],
-  '媽媽手': ['LU7', 'LI4', 'PC6'],
-  '滑鼠手': ['PC6', 'LU7', 'HT7', 'LI4'],
-  '手腕痛': ['PC6', 'HT7', 'LU7'],
-  '水腫': ['SP9', 'SP6', 'ST36', 'KI3', 'BL60'],
-  '瘦腿': ['SP9', 'ST40', 'SP6', 'BL40'],
-  '泡泡眼': ['BL2', 'EX-HN5', 'SP9'],
-  '乾眼': ['BL2', 'EX-HN5', 'GB20', 'LI4'],
-  '眼睛乾': ['BL2', 'EX-HN5', 'GB20'],
-  '黑眼圈': ['BL2', 'EX-HN5', 'SP6', 'KI3'],
-  '睡不著': ['HT7', 'EX-HN3', 'PC6', 'KI1', 'SP6'],
-  '失眠': ['HT7', 'EX-HN3', 'PC6', 'KI1', 'SP6'],
-  '多夢': ['HT7', 'PC8', 'EX-HN3', 'SP6'],
-  '淺眠': ['HT7', 'EX-HN3', 'KI1'],
-  '心悸': ['PC6', 'HT7', 'CV17'],
-  '胸悶': ['CV17', 'PC6', 'LR3'],
-  '喘不過氣': ['CV17', 'PC6', 'LU7'],
-  '偏頭痛': ['EX-HN5', 'GB20', 'LI4', 'LR3', 'TE17'],
-  '頭暈': ['GV20', 'GB20', 'EX-HN5', 'LR3'],
-  '腦霧': ['GV20', 'EX-HN3', 'GB20'],
-  '提神': ['GV20', 'GB20', 'LI4', 'KI1'],
-  '想睡覺': ['GV20', 'GB20', 'LI4'],
-  '鼻塞': ['LI20', 'EX-HN3', 'GB20', 'LI4'],
-  '過敏': ['LI20', 'LI4', 'GB20', 'ST36'],
-  '流鼻水': ['LI20', 'GB20', 'LU7', 'LI4'],
-  '感冒': ['GB20', 'GV14', 'LU7', 'LI4'],
-  '發燒': ['GV14', 'LI4', 'LU10'],
-  '喉嚨痛': ['LU10', 'LU7', 'LI4', 'KI3'],
-  '咳嗽': ['LU10', 'LU7', 'CV17', 'ST40'],
-  '有痰': ['ST40', 'LU7', 'CV17'],
-  '生理痛': ['SP6', 'CV6', 'LR3', 'LI4'],
-  '經痛': ['SP6', 'CV6', 'LR3', 'LI4'],
-  '月經': ['SP6', 'CV6', 'LR3'],
-  '手腳冰冷': ['KI1', 'CV6', 'ST36', 'KI3'],
-  '腰痛': ['BL40', 'SI3', 'KI3', 'BL60'],
-  '閃到腰': ['BL40', 'SI3', 'BL60'],
-  '坐骨神經': ['BL40', 'BL60', 'GB20'],
-  '足底筋膜炎': ['KI1', 'KI3', 'BL60'],
-  '腳底痛': ['KI1', 'KI3', 'BL60'],
-  '耳鳴': ['TE17', 'KI3', 'GB20', 'REFLEX-EYE-TRAP'],
-  '火氣大': ['LR3', 'PC8', 'LU10', 'LI4', 'EX-LE-LINEITING'],
-  '嘴破': ['PC8', 'LR3', 'LI4', 'EX-LE-LINEITING'],
-  '口臭': ['PC8', 'ST36', 'LR3', 'EX-LE-LINEITING'],
-  '富貴包': ['GV14', 'GB20', 'GB21', 'SI3'],
-  '網球肘': ['LI11', 'LI4', 'LU7'],
-  '手肘痛': ['LI11', 'LI4'],
-  '皮膚癢': ['LI11', 'SP10', 'SP6'],
-  '蕁麻疹': ['LI11', 'SP10', 'SP6'],
-  '宿便': ['ST25', 'ST36', 'LI4', 'REFLEX-STOMACH'],
-  '頻尿': ['CV6', 'BL23', 'KI3'],
-  '夜尿': ['CV6', 'BL23', 'KI3', 'KI1'],
-  '腳底按摩': ['REFLEX-KIDNEY', 'KI1', 'REFLEX-STOMACH', 'EX-LE-SHIMIAN', 'REFLEX-BRAIN', 'REFLEX-EYE-TRAP', 'REFLEX-LIVER', 'REFLEX-HEART'],
-  '足底反射區': ['REFLEX-KIDNEY', 'REFLEX-STOMACH', 'REFLEX-LIVER', 'REFLEX-HEART', 'REFLEX-BRAIN', 'REFLEX-EYE-TRAP', 'REFLEX-PELVIS'],
-  '腳後跟': ['EX-LE-SHIMIAN', 'REFLEX-PELVIS', 'KI3', 'BL60'],
-  '氣結': ['REFLEX-STOMACH', 'REFLEX-KIDNEY', 'REFLEX-EYE-TRAP', 'CV17'],
-  '排毒': ['REFLEX-KIDNEY', 'BL40', 'SP9', 'LR3'],
-  '爆肝': ['REFLEX-LIVER', 'LR3', 'GB20'],
-  '右腳': ['REFLEX-LIVER'],
-  '左腳': ['REFLEX-HEART']
-};
-
-// 載入與儲存 localStorage (收藏處方 + 按後痛感體質紀錄)
-const STORAGE_KEYS = {
-  FAVS: 'acupoint_favs_v1',
-  LOGS: 'acupoint_logs_v1'
-};
-
-function loadPersistedData() {
-  try {
-    const rawFavs = localStorage.getItem(STORAGE_KEYS.FAVS);
-    if (rawFavs) {
-      state.favorites = new Set(JSON.parse(rawFavs));
-    }
-    const rawLogs = localStorage.getItem(STORAGE_KEYS.LOGS);
-    if (rawLogs) {
-      state.painLogs = JSON.parse(rawLogs);
-    }
-  } catch (_) {}
-}
-
-function saveFavorites() {
-  try {
-    localStorage.setItem(STORAGE_KEYS.FAVS, JSON.stringify([...state.favorites]));
-  } catch (_) {}
-}
-
-function savePainLogs() {
-  try {
-    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(state.painLogs.slice(-100)));
-  } catch (_) {}
-}
-
-// 🔆 iPhone 螢幕防休眠常亮鎖 (Screen Wake Lock API)
-let wakeLockSentinel = null;
-
-async function requestWakeLock() {
-  if (!('wakeLock' in navigator)) return;
-  try {
-    wakeLockSentinel = await navigator.wakeLock.request('screen');
-    const badge = document.getElementById('wakeLockBadge');
-    if (badge) badge.style.display = 'inline-block';
-    wakeLockSentinel.addEventListener('release', () => {
-      const b = document.getElementById('wakeLockBadge');
-      if (b && !state.timer.running) b.style.display = 'none';
-    });
-  } catch (_) {}
-}
-
-async function releaseWakeLock() {
-  try {
-    if (wakeLockSentinel) {
-      await wakeLockSentinel.release();
-      wakeLockSentinel = null;
-    }
-  } catch (_) {}
-  const badge = document.getElementById('wakeLockBadge');
-  if (badge) badge.style.display = 'none';
-}
-
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && state.timer.running) {
-    requestWakeLock();
-  }
-});
-
-// Web Audio API 頌缽與木魚溫潤音效合成器（完美解決 iPhone Safari 無震動 API 的問題）
-let audioCtx = null;
-
-function ensureAudioContext() {
-  if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (AudioContextClass) {
-      audioCtx = new AudioContextClass();
-    }
-  }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-}
-
-function playSingingBowl(type = 'press') {
-  const soundEnabled = document.getElementById('soundToggle')?.checked;
-  if (!soundEnabled) return;
-
-  ensureAudioContext();
-  if (!audioCtx) return;
-
-  const now = audioCtx.currentTime;
-  const masterGain = audioCtx.createGain();
-  masterGain.connect(audioCtx.destination);
-
-  if (type === 'press') {
-    const freqs = [256, 512, 768];
-    const gains = [0.28, 0.12, 0.05];
-    freqs.forEach((f, idx) => {
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, now);
-      g.gain.setValueAtTime(0.001, now);
-      g.gain.exponentialRampToValueAtTime(gains[idx], now + 0.08);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 2.4);
-      osc.connect(g);
-      g.connect(masterGain);
-      osc.start(now);
-      osc.stop(now + 2.5);
-    });
-  } else {
-    const freqs = [432, 648];
-    freqs.forEach((f, idx) => {
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(f, now);
-      g.gain.setValueAtTime(0.001, now);
-      g.gain.exponentialRampToValueAtTime(idx === 0 ? 0.16 : 0.06, now + 0.04);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
-      osc.connect(g);
-      g.connect(masterGain);
-      osc.start(now);
-      osc.stop(now + 1.25);
-    });
-  }
-}
-
-function speakGuide(text) {
-  const soundEnabled = document.getElementById('soundToggle')?.checked;
-  if (!soundEnabled || !('speechSynthesis' in window)) return;
-  try {
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'zh-TW';
-    utter.rate = 0.96;
-    utter.pitch = 0.95;
-    utter.volume = 0.8;
-    window.speechSynthesis.speak(utter);
-  } catch (_) {}
-}
-
-// 取得 5 大視圖（正面、背面、頭面特寫、手部特寫、足腿特寫）的新中式人體與骨骼透視 SVG
-function getBaseBodySvgMarkup(view, xrayOpacity) {
-  if (view === 'front') {
-    return `
-      <defs>
-        <linearGradient id="bodyFillFront" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#F6F0E4" />
-          <stop offset="100%" stop-color="#E9DEC8" />
-        </linearGradient>
-      </defs>
-
-      <!-- 人體外輪廓（正面升級版：含道家養生髮髻、雙耳、胸腹肌理線、肚臍神闕與手指細節） -->
-      <g class="skin-layer" stroke="#5A5246" stroke-width="1.8" fill="url(#bodyFillFront)">
-        <!-- 髮髻 -->
-        <ellipse cx="200" cy="24" rx="14" ry="10" fill="#433D36" stroke="#2D2924" stroke-width="1.5"/>
-        <line x1="182" y1="24" x2="218" y2="24" stroke="#C4893B" stroke-width="2.5" stroke-linecap="round"/>
-        <!-- 雙耳 -->
-        <ellipse cx="167" cy="69" rx="4.5" ry="9" fill="#EFE5D4"/>
-        <ellipse cx="233" cy="69" rx="4.5" ry="9" fill="#EFE5D4"/>
-
-        <path d="
-          M200,32
-          C181,32 169,46 169,66
-          C169,82 177,95 186,101
-          L186,113
-          C168,118 144,124 134,138
-          C123,155 117,205 111,248
-          C106,278 100,298 92,315
-          C87,325 95,333 105,326
-          C114,319 124,308 131,294
-          C139,265 147,218 154,178
-          L158,255
-          C156,302 153,355 157,418
-          C160,468 164,525 169,578
-          C168,598 160,618 166,626
-          C174,633 191,628 193,612
-          C194,565 194,505 196,435
-          L200,345
-          L204,435
-          C206,505 206,565 207,612
-          C209,628 226,633 234,626
-          C240,618 232,598 231,578
-          C236,525 240,468 243,418
-          C247,355 244,302 242,255
-          L246,178
-          C253,218 261,265 269,294
-          C276,308 286,319 295,326
-          C305,333 313,325 308,315
-          C300,298 294,278 289,248
-          C283,205 277,155 266,138
-          C256,124 232,118 214,113
-          L214,101
-          C223,95 231,82 231,66
-          C231,46 219,32 200,32 Z
-        " />
-        <!-- 前額髮際弧線與五官工筆線條 -->
-        <path d="M172,54 Q200,45 228,54" fill="none" stroke="#433D36" stroke-width="2"/>
-        <path d="M181,62 Q190,59 195,62 M205,62 Q210,59 219,62" fill="none" stroke="#5A5246" stroke-width="1.5" stroke-linecap="round"/>
-        <path d="M184,68 Q190,70 194,68 M206,68 Q210,70 216,68" fill="none" stroke="#5A5246" stroke-width="1.3"/>
-        <path d="M200,63 L200,76 M195,77 Q200,80 205,77" fill="none" stroke="#5A5246" stroke-width="1.2" stroke-linecap="round"/>
-        <path d="M193,86 Q200,89 207,86" fill="none" stroke="#5A5246" stroke-width="1.2" stroke-linecap="round"/>
-        <!-- 胸肌、肚臍（神闕）與膝蓋肌理線 -->
-        <path d="M164,172 Q182,182 197,174 M236,172 Q218,182 203,174" fill="none" stroke="#8E8577" stroke-width="1.2"/>
-        <circle cx="200" cy="262" r="2.5" fill="none" stroke="#8E8577" stroke-width="1.2"/>
-        <path d="M169,424 Q177,418 186,424 M214,424 Q223,418 231,424" fill="none" stroke="#8E8577" stroke-width="1.2"/>
-      </g>
-
-      <!-- 🦴 骨骼地標透視層（正面） -->
-      <g class="skeleton-layer" style="opacity: ${xrayOpacity};" stroke="#8C6D46" stroke-width="1.5" fill="none">
-        <circle cx="189" cy="68" r="7" stroke-dasharray="2 2"/>
-        <circle cx="211" cy="68" r="7" stroke-dasharray="2 2"/>
-        <path d="M152,126 Q178,132 196,128 M248,126 Q222,132 204,128" stroke-width="2.2" stroke-linecap="round"/>
-        <line x1="200" y1="128" x2="200" y2="195" stroke-width="3" stroke-linecap="round"/>
-        <path d="M198,142 Q172,145 166,162 M202,142 Q228,145 234,162"/>
-        <path d="M198,158 Q168,162 162,182 M202,158 Q232,162 238,182"/>
-        <path d="M198,175 Q170,182 165,202 M202,175 Q230,182 235,202"/>
-        <line x1="142" y1="215" x2="116" y2="295" />
-        <line x1="148" y1="220" x2="132" y2="300" />
-        <line x1="258" y1="215" x2="284" y2="295" />
-        <line x1="252" y1="220" x2="268" y2="300" />
-        <ellipse cx="177" cy="430" rx="10" ry="12" fill="rgba(196,137,59,0.14)"/>
-        <ellipse cx="223" cy="430" rx="10" ry="12" fill="rgba(196,137,59,0.14)"/>
-        <path d="M179,444 L184,575 M172,446 L176,575" stroke-width="2"/>
-        <path d="M221,444 L216,575 M228,446 L224,575" stroke-width="2"/>
-        <circle cx="190" cy="580" r="4" fill="#8C6D46"/>
-        <circle cx="210" cy="580" r="4" fill="#8C6D46"/>
-        <path d="M184,592 L176,618 M179,592 L170,618" stroke-width="1.6"/>
-        <path d="M216,592 L224,618 M221,592 L230,618" stroke-width="1.6"/>
-      </g>
-
-      <g class="meridian-layer">
-        <line class="meridian-line" x1="200" y1="36" x2="200" y2="330" />
-        <path class="meridian-line" d="M193,76 Q172,110 150,140 L125,288 L108,315" />
-        <path class="meridian-line" d="M184,392 L174,465 L168,505 L188,545 L178,612" />
-      </g>
-    `;
-  }
-
-  if (view === 'back') {
-    return `
-      <defs>
-        <linearGradient id="bodyFillBack" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#F2EBDC" />
-          <stop offset="100%" stop-color="#E6DBC6" />
-        </linearGradient>
-      </defs>
-
-      <g class="skin-layer" stroke="#5A5246" stroke-width="1.8" fill="url(#bodyFillBack)">
-        <ellipse cx="200" cy="24" rx="14" ry="10" fill="#433D36" stroke="#2D2924" stroke-width="1.5"/>
-        <ellipse cx="167" cy="69" rx="4.5" ry="9" fill="#EAE0CE"/>
-        <ellipse cx="233" cy="69" rx="4.5" ry="9" fill="#EAE0CE"/>
-        <path d="
-          M200,32
-          C181,32 169,46 169,66
-          C169,82 177,95 186,101
-          L186,113
-          C168,118 144,124 134,138
-          C123,155 117,205 111,248
-          C106,278 100,298 92,315
-          C87,325 95,333 105,326
-          C114,319 124,308 131,294
-          C139,265 147,218 154,178
-          L158,255
-          C156,302 153,355 157,418
-          C160,468 164,525 169,578
-          C168,602 163,626 172,633
-          C182,638 192,632 193,612
-          C194,565 194,505 196,435
-          L200,345
-          L204,435
-          C206,505 206,565 207,612
-          C208,632 218,638 228,633
-          C237,626 232,602 231,578
-          C236,525 240,468 243,418
-          C247,355 244,302 242,255
-          L246,178
-          C253,218 261,265 269,294
-          C276,308 286,319 295,326
-          C305,333 313,325 308,315
-          C300,298 294,278 289,248
-          C283,205 277,155 266,138
-          C256,124 232,118 214,113
-          L214,101
-          C223,95 231,82 231,66
-          C231,46 219,32 200,32 Z
-        " />
-        <path d="M177,76 Q200,84 223,76" fill="none" stroke="#6E6558" stroke-width="1.4" stroke-dasharray="3 2"/>
-        <path d="M163,432 Q176,435 190,432 M210,432 Q224,435 237,432" fill="none" stroke="#6E6558" stroke-width="1.5"/>
-      </g>
-
-      <g class="skeleton-layer" style="opacity: ${xrayOpacity};" stroke="#8C6D46" stroke-width="1.6" fill="none">
-        <path d="M175,74 Q200,82 225,74" stroke-width="2.2"/>
-        <line x1="200" y1="82" x2="200" y2="335" stroke-width="3.5" stroke-dasharray="5 3"/>
-        <circle cx="200" cy="116" r="4.5" fill="#B83D2E" />
-        <path d="M152,132 L182,136 L176,188 Z" fill="rgba(196,137,59,0.1)"/>
-        <path d="M248,132 L218,136 L224,188 Z" fill="rgba(196,137,59,0.1)"/>
-        <line x1="178" y1="530" x2="178" y2="598" stroke-width="2.5"/>
-        <line x1="222" y1="530" x2="222" y2="598" stroke-width="2.5"/>
-      </g>
-
-      <g class="meridian-layer">
-        <line class="meridian-line" x1="200" y1="38" x2="200" y2="340" />
-        <path class="meridian-line" d="M184,80 L162,122 L175,330 L175,432 L188,582 L176,625" />
-      </g>
-    `;
-  }
-
-  // 新增：頭面部特寫視圖 (head)
-  if (view === 'head') {
-    return `
-      <defs>
-        <linearGradient id="headFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#F7F1E5" />
-          <stop offset="100%" stop-color="#E9DEC8" />
-        </linearGradient>
-      </defs>
-
-      <text x="200" y="34" text-anchor="middle" fill="#655E53" font-family="Noto Serif TC, serif" font-size="13">
-        頭面部七大要穴特寫（含眉骨眶上切迹、鼻翼法令紋、耳後與枕骨地標）
-      </text>
-
-      <!-- 頭頸放大輪廓 -->
-      <g class="skin-layer" stroke="#5A5246" stroke-width="2" fill="url(#headFill)">
-        <!-- 肩頸底座 -->
-        <path d="M85,435 C105,385 135,365 142,315 L258,315 C265,365 295,385 315,435 Z" fill="#E6DAC3"/>
-        <!-- 雙耳與耳垂（翳風定位基準） -->
-        <path d="M108,195 C88,192 85,245 96,268 C102,280 114,282 118,268" fill="#EFE4D2"/>
-        <path d="M292,195 C312,192 315,245 304,268 C298,280 286,282 282,268" fill="#EFE4D2"/>
-        <!-- 臉部輪廓 -->
-        <path d="M200,56 C135,56 108,112 108,195 C108,268 146,332 200,336 C254,332 292,268 292,195 C292,112 265,56 200,56 Z"/>
-        <!-- 髮際線與道家髮髻 -->
-        <path d="M112,165 C125,112 162,96 200,98 C238,96 275,112 288,165" fill="none" stroke="#433D36" stroke-width="2.5"/>
-        <!-- 雙眉（攢竹、印堂、太陽基準） -->
-        <path d="M132,188 Q154,174 174,185" fill="none" stroke="#3A352F" stroke-width="5" stroke-linecap="round"/>
-        <path d="M268,188 Q246,174 226,185" fill="none" stroke="#3A352F" stroke-width="5" stroke-linecap="round"/>
-        <!-- 雙眼 -->
-        <path d="M138,210 Q156,198 174,210 Q156,218 138,210 Z" fill="#FFF" stroke="#3A352F" stroke-width="1.8"/>
-        <circle cx="156" cy="209" r="5" fill="#3A352F"/>
-        <path d="M262,210 Q244,198 226,210 Q244,218 262,210 Z" fill="#FFF" stroke="#3A352F" stroke-width="1.8"/>
-        <circle cx="244" cy="209" r="5" fill="#3A352F"/>
-        <!-- 鼻樑、鼻翼與法令紋（迎香基準） -->
-        <path d="M200,188 L200,252 C192,265 178,264 178,255 M200,252 C208,265 222,264 222,255" fill="none" stroke="#5A5246" stroke-width="2" stroke-linecap="round"/>
-        <path d="M175,248 Q162,272 158,295 M225,248 Q238,272 242,295" fill="none" stroke="#8C584C" stroke-width="1.6" stroke-dasharray="3 2"/>
-        <!-- 唇線 -->
-        <path d="M178,292 Q200,300 222,292 Q200,306 178,292 Z" fill="#D99B8C" stroke="#5A5246" stroke-width="1.4"/>
-      </g>
-
-      <!-- 🦴 頭面骨骼透視層（眼眶骨、眶上切迹、顳骨太陽凹窩、枕骨下緣風池） -->
-      <g class="skeleton-layer" style="opacity: ${xrayOpacity};" stroke="#8C6D46" stroke-width="1.8" fill="none">
-        <!-- 督脈頭頂正中十字線 -->
-        <line x1="200" y1="45" x2="200" y2="335" stroke-dasharray="4 3"/>
-        <line x1="92" y1="195" x2="308" y2="195" stroke-dasharray="3 3" opacity="0.6"/>
-        <!-- 左右眼眶骨與攢竹眶上切迹 -->
-        <ellipse cx="156" cy="209" rx="24" ry="18" stroke-dasharray="3 2"/>
-        <ellipse cx="244" cy="209" rx="24" ry="18" stroke-dasharray="3 2"/>
-        <!-- 太陽穴顳骨凹窩 -->
-        <circle cx="112" cy="205" r="10" fill="rgba(196,137,59,0.15)" stroke-dasharray="2 2"/>
-        <circle cx="288" cy="205" r="10" fill="rgba(196,137,59,0.15)" stroke-dasharray="2 2"/>
-        <!-- 後腦枕骨下緣延伸標示（風池、翳風） -->
-        <path d="M105,278 Q132,322 200,328 Q268,322 295,278" stroke="#2A483A" stroke-width="2" stroke-dasharray="4 2"/>
-        <text x="200" y="362" text-anchor="middle" fill="#2A483A" font-size="11">↑ 虛線為耳垂後「翳風」與後腦顱底「風池」對應高度</text>
-      </g>
-    `;
-  }
-
-  // 手掌與手背特寫視圖 (hand)
-  if (view === 'hand') {
-    return `
-      <defs>
-        <linearGradient id="handFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#F6F0E4" />
-          <stop offset="100%" stop-color="#E9DEC9" />
-        </linearGradient>
-      </defs>
-
-      <text x="200" y="38" text-anchor="middle" fill="#655E53" font-family="Noto Serif TC, serif" font-size="13">
-        手部七大黃金穴位特寫（合谷・魚際・勞宮・列缺・後谿・神門・內關）
-      </text>
-
-      <g class="skin-layer" stroke="#5A5246" stroke-width="2" fill="url(#handFill)">
-        <path d="
-          M105,430
-          L105,305
-          C92,285 82,258 80,228
-          C78,195 76,142 84,132
-          C92,124 102,132 103,155
-          L106,198
-          C109,145 112,98 122,92
-          C132,88 139,98 139,145
-          L141,192
-          C145,135 150,82 162,80
-          C174,78 179,90 177,145
-          L176,196
-          C182,148 190,104 202,104
-          C213,104 216,118 209,165
-          L202,216
-          C222,198 248,176 264,182
-          C276,188 274,205 254,225
-          C234,246 216,268 195,305
-          L192,430 Z
-        " />
-        <path d="M104,312 Q148,318 194,312" fill="none" stroke="#8C584C" stroke-width="2" stroke-dasharray="4 2"/>
-        <text x="248" y="316" fill="#8C584C" font-size="11" font-family="Noto Serif TC, serif">← 手腕橫紋</text>
-        <path d="M178,225 Q196,242 204,265" fill="none" stroke="#6E6558" stroke-width="1.5"/>
-      </g>
-
-      <g class="skeleton-layer" style="opacity: ${xrayOpacity};" stroke="#8C6D46" stroke-width="2.2" fill="none">
-        <line x1="184" y1="292" x2="245" y2="205" stroke-width="5" stroke-linecap="round" opacity="0.65"/>
-        <line x1="168" y1="292" x2="196" y2="165" stroke-width="6" stroke-linecap="round" stroke="#B83D2E" opacity="0.55"/>
-        <line x1="152" y1="292" x2="164" y2="160" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
-        <line x1="134" y1="292" x2="132" y2="165" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
-        <line x1="115" y1="295" x2="96" y2="185" stroke-width="5" stroke-linecap="round" opacity="0.65"/>
-        <circle cx="110" cy="314" r="6" fill="rgba(184,61,46,0.25)" stroke="#B83D2E"/>
-        <line x1="140" y1="312" x2="140" y2="425" stroke="#2A483A" stroke-width="2.5" stroke-dasharray="3 2"/>
-        <line x1="152" y1="312" x2="152" y2="425" stroke="#2A483A" stroke-width="2.5" stroke-dasharray="3 2"/>
-      </g>
-
-      <g class="meridian-layer">
-        <path class="meridian-line" d="M145,420 L145,360 L162,235 L205,215" />
-      </g>
-    `;
-  }
-
-  // 新增：🦶 足底全息反射區與奇穴視圖 (sole)
-  if (view === 'sole') {
-    return `
-      <defs>
-        <linearGradient id="soleFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#F7F0E2" />
-          <stop offset="100%" stop-color="#E6D9C2" />
-        </linearGradient>
-        <marker id="detoxArrow" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="#2A483A" />
-        </marker>
-      </defs>
-
-      <text x="200" y="26" text-anchor="middle" fill="#2A483A" font-family="Noto Serif TC, serif" font-weight="bold" font-size="13.5">
-        🦶 足底全息反射區＆經外奇穴圖（可直接點擊色塊或紅點）
-      </text>
-      <rect x="66" y="38" width="128" height="22" rx="6" fill="rgba(42,115,82,0.12)" stroke="#2A483A" stroke-width="1"/>
-      <text x="130" y="53" text-anchor="middle" fill="#1D4734" font-size="11" font-weight="bold">
-        🦶【右腳底】外側主肝膽
-      </text>
-      <rect x="206" y="38" width="128" height="22" rx="6" fill="rgba(184,61,46,0.12)" stroke="#B83D2E" stroke-width="1"/>
-      <text x="270" y="53" text-anchor="middle" fill="#8A2519" font-size="11" font-weight="bold">
-        🦶【左腳底】外側主心脾
-      </text>
-      <text x="200" y="75" text-anchor="middle" fill="#8C6D46" font-size="10.5" font-weight="bold">
-        ← 兩腳大拇趾相對（內側）→
-      </text>
-      <text x="54" y="130" text-anchor="middle" fill="#8C6D46" font-size="9.5">右小趾(外)</text>
-      <text x="346" y="130" text-anchor="middle" fill="#8C6D46" font-size="9.5">左小趾(外)</text>
-
-      <!-- 左右雙足底輪廓 -->
-      <g class="skin-layer" stroke="#5A5246" stroke-width="2" fill="url(#soleFill)">
-        <!-- 右足底 (左側畫布，大拇趾在內側 x=162) -->
-        <ellipse cx="162" cy="108" rx="18" ry="25" />
-        <ellipse cx="132" cy="104" rx="10" ry="18" />
-        <ellipse cx="110" cy="112" rx="9.5" ry="16" />
-        <ellipse cx="90" cy="124" rx="8.5" ry="14" />
-        <ellipse cx="73" cy="142" rx="8" ry="12" />
-        <path d="
-          M68,160
-          C56,215 68,295 85,375
-          C92,435 90,515 110,545
-          C128,568 158,565 168,535
-          C176,502 166,435 162,368
-          C156,305 178,242 182,188
-          C184,155 174,136 154,135
-          L82,148 Z
-        " />
-
-        <!-- 左足底 (右側畫布鏡像，大拇趾在內側 x=238) -->
-        <ellipse cx="238" cy="108" rx="18" ry="25" />
-        <ellipse cx="268" cy="104" rx="10" ry="18" />
-        <ellipse cx="290" cy="112" rx="9.5" ry="16" />
-        <ellipse cx="310" cy="124" rx="8.5" ry="14" />
-        <ellipse cx="327" cy="142" rx="8" ry="12" />
-        <path d="
-          M332,160
-          C344,215 332,295 315,375
-          C308,435 310,515 290,545
-          C272,568 242,565 232,535
-          C224,502 234,435 238,368
-          C244,305 222,242 218,188
-          C216,155 226,136 246,135
-          L318,148 Z
-        " />
-      </g>
-
-      <!-- 🎨 足底互動反射區色塊（點擊色塊也可直接選取該區） -->
-      <g class="reflex-zones-layer">
-        <!-- ① 大腦頭頸區 (大拇趾腹) -->
-        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-BRAIN" cx="162" cy="108" rx="15" ry="21" fill="rgba(196,137,59,0.28)" stroke="#C4893B" stroke-width="1.5" style="cursor:pointer;"/>
-        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-BRAIN" cx="238" cy="108" rx="15" ry="21" fill="rgba(196,137,59,0.28)" stroke="#C4893B" stroke-width="1.5" style="cursor:pointer;"/>
-
-        <!-- ② 眼耳與斜方肌橫帶 (前掌肉墊) -->
-        <path class="reflex-zone-poly" data-point-id="REFLEX-EYE-TRAP" d="M72,158 Q125,138 176,162 L174,198 Q122,186 70,198 Z" fill="rgba(42,72,58,0.18)" stroke="#2A483A" stroke-width="1.4" stroke-dasharray="3 2" style="cursor:pointer;"/>
-        <path class="reflex-zone-poly" data-point-id="REFLEX-EYE-TRAP" d="M328,158 Q275,138 224,162 L226,198 Q278,186 330,198 Z" fill="rgba(42,72,58,0.18)" stroke="#2A483A" stroke-width="1.4" stroke-dasharray="3 2" style="cursor:pointer;"/>
-
-        <!-- ③ 【右腳專屬】肝膽區 (x=96) 與 【左腳專屬】心脾區 (x=304) 獨立分開 -->
-        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-LIVER" cx="96" cy="252" rx="22" ry="32" fill="rgba(42,115,82,0.24)" stroke="#2A483A" stroke-width="1.6" style="cursor:pointer;"/>
-        <ellipse class="reflex-zone-poly" data-point-id="REFLEX-HEART" cx="304" cy="252" rx="22" ry="32" fill="rgba(184,61,46,0.22)" stroke="#B83D2E" stroke-width="1.6" style="cursor:pointer;"/>
-        <text x="96" y="272" text-anchor="middle" fill="#1D4734" font-size="9.5" font-weight="bold" pointer-events="none">右腳肝膽</text>
-        <text x="304" y="272" text-anchor="middle" fill="#8A2519" font-size="9.5" font-weight="bold" pointer-events="none">左腳心脾</text>
-
-        <!-- ④ 胃・脾・十二指腸區 (內側足弓帶) -->
-        <path class="reflex-zone-poly" data-point-id="REFLEX-STOMACH" d="M148,220 C172,225 176,315 152,338 C138,325 138,245 148,220 Z" fill="rgba(212,150,69,0.28)" stroke="#B5792A" stroke-width="1.5" style="cursor:pointer;"/>
-        <path class="reflex-zone-poly" data-point-id="REFLEX-STOMACH" d="M252,220 C228,225 224,315 248,338 C262,325 262,245 252,220 Z" fill="rgba(212,150,69,0.28)" stroke="#B5792A" stroke-width="1.5" style="cursor:pointer;"/>
-
-        <!-- ⑤ 腎 → 輸尿管 → 膀胱排毒鏈 (足心斜向內側踝前緣) -->
-        <path class="reflex-zone-poly" data-point-id="REFLEX-KIDNEY" d="M126,285 Q145,342 162,395" fill="none" stroke="#2A483A" stroke-width="7" stroke-linecap="round" opacity="0.55" marker-end="url(#detoxArrow)" style="cursor:pointer;"/>
-        <path class="reflex-zone-poly" data-point-id="REFLEX-KIDNEY" d="M274,285 Q255,342 238,395" fill="none" stroke="#2A483A" stroke-width="7" stroke-linecap="round" opacity="0.55" marker-end="url(#detoxArrow)" style="cursor:pointer;"/>
-
-        <!-- ⑥ 骨盆腔與生殖腺反射區 (整個腳後跟圓墊) -->
-        <circle class="reflex-zone-poly" data-point-id="REFLEX-PELVIS" cx="132" cy="485" r="36" fill="rgba(184,61,46,0.16)" stroke="#B83D2E" stroke-width="1.5" stroke-dasharray="4 2" style="cursor:pointer;"/>
-        <circle class="reflex-zone-poly" data-point-id="REFLEX-PELVIS" cx="268" cy="485" r="36" fill="rgba(184,61,46,0.16)" stroke="#B83D2E" stroke-width="1.5" stroke-dasharray="4 2" style="cursor:pointer;"/>
-
-        <!-- 湧泉穴人字紋 -->
-        <path d="M98,228 Q132,196 164,228" fill="none" stroke="#5A5246" stroke-width="2.2" stroke-linecap="round" pointer-events="none"/>
-        <path d="M236,228 Q268,196 302,228" fill="none" stroke="#5A5246" stroke-width="2.2" stroke-linecap="round" pointer-events="none"/>
-      </g>
-
-      <!-- 🦴 足底骨骼與足底筋膜透視層 -->
-      <g class="skeleton-layer" style="opacity: ${xrayOpacity};" stroke="#8C6D46" stroke-width="2" fill="none" pointer-events="none">
-        <!-- 第 1~5 跖骨與跟骨結節 -->
-        <line x1="158" y1="145" x2="148" y2="295" stroke-width="4" opacity="0.45"/>
-        <line x1="132" y1="145" x2="132" y2="305" stroke-width="3" opacity="0.45"/>
-        <line x1="108" y1="155" x2="115" y2="310" stroke-width="3" opacity="0.45"/>
-        <circle cx="132" cy="485" r="22" stroke-dasharray="3 2" opacity="0.5"/>
-        <circle cx="268" cy="485" r="22" stroke-dasharray="3 2" opacity="0.5"/>
-      </g>
-
-      <rect x="24" y="592" width="352" height="58" rx="10" fill="rgba(42,72,58,0.08)" stroke="rgba(42,72,58,0.25)"/>
-      <text x="200" y="614" text-anchor="middle" fill="#2A483A" font-size="11.5" font-weight="bold">
-        💡 居家省力秘訣：不必用手死命摳！將「高爾夫球/網球」踩在腳底滾動，
-      </text>
-      <text x="200" y="634" text-anchor="middle" fill="#B83D2E" font-size="11.5" font-weight="bold">
-        並於按完後 15 分鐘內喝下 300～500cc 溫開水，排毒消腫效果翻倍！
-      </text>
-    `;
-  }
-
-  // 足腿與足底特寫視圖 (foot)
-  return `
-    <defs>
-      <linearGradient id="footFill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#F6F0E4" />
-        <stop offset="100%" stop-color="#E7DBC5" />
-      </linearGradient>
-    </defs>
-
-    <text x="200" y="34" text-anchor="middle" fill="#655E53" font-family="Noto Serif TC, serif" font-size="13">
-      足腿與足底七大要穴特寫（足三里・豐隆・三陰交・太谿・崑崙・太衝・湧泉）
-    </text>
-
-    <!-- 左半：小腿與足背特寫；右半：內踝與足底湧泉特寫 -->
-    <g class="skin-layer" stroke="#5A5246" stroke-width="2" fill="url(#footFill)">
-      <!-- 小腿至足背輪廓 -->
-      <path d="
-        M110,65
-        C102,155 104,265 114,358
-        C108,382 95,412 108,432
-        L165,505
-        C182,522 218,515 215,492
-        L188,415
-        C186,315 192,175 186,65 Z
-      " />
-      <!-- 右側：內側踝與足底湧泉對照圖 -->
-      <path d="
-        M238,185
-        L242,355
-        C232,378 235,402 252,412
-        L298,412
-        C302,365 296,265 292,185 Z
-      " />
-      <!-- 足底板（湧泉穴特寫） -->
-      <path d="
-        M248,622
-        C234,622 228,588 232,552
-        C235,515 225,478 245,462
-        C265,450 296,452 308,468
-        C322,488 312,532 305,568
-        C298,598 292,622 272,622 Z
-      " />
-      <!-- 湧泉人字紋 -->
-      <path d="M245,552 Q270,526 296,552" fill="none" stroke="#2A483A" stroke-width="2.5" stroke-linecap="round"/>
-      <text x="272" y="642" text-anchor="middle" fill="#655E53" font-size="11">足底板（捲趾人字窩＝湧泉）</text>
-    </g>
-
-    <!-- 🦴 小腿脛骨、內外踝尖與第 1、2 跖骨地標 -->
-    <g class="skeleton-layer" style="opacity: ${xrayOpacity};" stroke="#8C6D46" stroke-width="2" fill="none">
-      <!-- 膝蓋髕骨與外膝眼 -->
-      <ellipse cx="152" cy="82" rx="22" ry="15" fill="rgba(196,137,59,0.15)"/>
-      <!-- 脛骨前緣與內側脛骨後緣 -->
-      <line x1="158" y1="98" x2="158" y2="365" stroke-width="6" opacity="0.45"/>
-      <line x1="252" y1="195" x2="252" y2="362" stroke-width="6" opacity="0.45"/>
-      <!-- 外踝尖(崑崙) 與 內踝尖(太谿、三陰交基準) -->
-      <circle cx="126" cy="368" r="8" fill="rgba(184,61,46,0.2)"/>
-      <circle cx="254" cy="368" r="8" fill="rgba(42,72,58,0.2)"/>
-      <text x="275" y="345" fill="#2A483A" font-size="10.5">← 內踝尖與脛骨後緣</text>
-      <!-- 足背第一、二跖骨 V 字骨縫（太衝） -->
-      <path d="M175,425 L192,465 L204,495 M175,425 L182,495" stroke-width="2.5"/>
-    </g>
-
-    <g class="meridian-layer">
-      <path class="meridian-line" d="M142,125 L122,215 L112,368 L192,465" />
-      <path class="meridian-line" d="M252,275 L268,368 L268,542" />
-    </g>
-  `;
-}
+import { state, COLLOQUIAL_SYNONYMS } from './modules/state.js';
+import { requestWakeLock, releaseWakeLock, playSingingBowl, speakGuide, vibrate } from './modules/audio.js';
+import { getBaseBodySvgMarkup } from './modules/bodySvg.js';
+import { loadPersistedData, saveFavorites, savePainLogs, exportBackup, importBackup } from './modules/storage.js';
+import { showToast } from './modules/ui.js';
+import { readDeepLinkFromUrl, syncUrlWithState, shareAcupointLink } from './modules/deeplink.js';
+import {
+  initCanvasGestures,
+  setCurrentViewBox,
+  resetViewBoxTransform,
+  wasDraggingCanvas,
+  bindNodeKeyboardEvents
+} from './modules/gestures.js';
+import { initThemeListener, cycleThemeMode } from './modules/theme.js';
+import { toggleDailyReminder, startReminderScheduler } from './modules/reminder.js';
+import { buildMeridianHeatmapHtml } from './modules/heatmap.js';
+import { renderPresetEditorModal } from './modules/presetEditor.js';
+import { POSTURE_SCENARIOS } from './modules/posture.js';
+import { getArPackStatus, preloadArPack, registerServiceWorkerWithUpdates } from './modules/offline.js';
 
 // 渲染人體 SVG 與穴位點
 function renderBodyCanvas() {
@@ -778,10 +86,13 @@ function renderBodyCanvas() {
 
   svg.querySelectorAll('.acupoint-node, .reflex-zone-poly').forEach((node) => {
     node.addEventListener('click', () => {
+      if (wasDraggingCanvas()) return;
       const pointId = node.getAttribute('data-point-id');
       if (pointId) selectAcupoint(pointId, true);
     });
   });
+
+  bindNodeKeyboardEvents(svg, (pointId) => selectAcupoint(pointId, true));
 }
 
 // 選取穴位並更新右側教學面板
@@ -793,7 +104,7 @@ function selectAcupoint(pointId, autoSwitchViewIfNeeded = false, keepTimerIfPlay
 
   // 若當前視圖沒有這個穴位，優先切換到局部特寫視圖或正反面視圖
   if (autoSwitchViewIfNeeded && !point.views[state.currentView]) {
-    const preferredOrder = ['sole', 'head', 'hand', 'foot', 'front', 'back'];
+    const preferredOrder = ['ear', 'sole', 'head', 'hand', 'foot', 'front', 'back'];
     const availableView = preferredOrder.find((v) => v in point.views) || Object.keys(point.views)[0];
     if (availableView) {
       state.currentView = availableView;
@@ -808,20 +119,18 @@ function selectAcupoint(pointId, autoSwitchViewIfNeeded = false, keepTimerIfPlay
   applySvgZoomForPoint(point);
   renderInspector(point);
   updatePlaylistBannerUI();
+  syncUrlWithState();
 }
 
 // 針對選中穴位自動將全身畫布局部放大聚焦
 function applySvgZoomForPoint(point) {
   const svg = document.getElementById('bodySvg');
-  const resetBtn = document.getElementById('resetZoomFloatingBtn');
   if (!svg) return;
 
   const coord = point?.views[state.currentView];
-  // 特寫視圖 (head / hand / foot / sole) 本身已經是放大圖，不需再裁切 viewBox
-  if (!state.autoZoomEnabled || !coord || ['head', 'hand', 'foot', 'sole'].includes(state.currentView)) {
-    svg.setAttribute('viewBox', '0 0 400 680');
-    state.isZoomedIn = false;
-    if (resetBtn) resetBtn.style.display = 'none';
+  // 特寫視圖 (head / hand / foot / sole / ear) 本身已經是放大圖，不需再裁切 viewBox
+  if (!state.autoZoomEnabled || !coord || ['head', 'hand', 'foot', 'sole', 'ear'].includes(state.currentView)) {
+    resetViewBoxTransform();
     return;
   }
 
@@ -830,17 +139,11 @@ function applySvgZoomForPoint(point) {
   const minX = Math.max(0, Math.min(400 - zoomW, coord.x - zoomW / 2));
   const minY = Math.max(0, Math.min(680 - zoomH, coord.y - zoomH / 2));
 
-  svg.setAttribute('viewBox', `${minX.toFixed(0)} ${minY.toFixed(0)} ${zoomW} ${zoomH}`);
-  state.isZoomedIn = true;
-  if (resetBtn) resetBtn.style.display = 'inline-block';
+  setCurrentViewBox(minX, minY, zoomW, zoomH);
 }
 
 function resetSvgZoom() {
-  const svg = document.getElementById('bodySvg');
-  const resetBtn = document.getElementById('resetZoomFloatingBtn');
-  if (svg) svg.setAttribute('viewBox', '0 0 400 680');
-  state.isZoomedIn = false;
-  if (resetBtn) resetBtn.style.display = 'none';
+  resetViewBoxTransform();
 }
 
 // 更新收藏按鈕狀態
@@ -918,7 +221,8 @@ function updatePainLogAndConstitutionUI() {
 
   lines.push(`<button type="button" id="jumpToDietTabBtn" class="pairing-Jump-btn" style="margin-top:6px;">🍵 查看本穴 3 分鐘茶飲＆超商外食清單 →</button>`);
 
-  insightEl.innerHTML = lines.join('<br/>');
+  const heatmapHtml = buildMeridianHeatmapHtml(state.painLogs);
+  insightEl.innerHTML = lines.join('<br/>') + heatmapHtml;
   insightEl.style.display = 'block';
 
   document.getElementById('jumpToDietTabBtn')?.addEventListener('click', () => {
@@ -1020,7 +324,7 @@ function renderInspector(point) {
 
   const sideBadge = document.getElementById('pointSideBadge');
   if (sideBadge) {
-    const midlineIds = new Set(['GV20', 'EX-HN3', 'GV26', 'CV17', 'CV12', 'CV6', 'GV14']);
+    const midlineIds = new Set(['GV20', 'EX-HN3', 'CV17', 'CV12', 'CV6', 'GV14']);
     if (point.id === 'REFLEX-LIVER') {
       sideBadge.textContent = '🟢 僅按【右腳底】外側（左腳無此區）';
       sideBadge.style.background = 'rgba(42, 115, 82, 0.16)';
@@ -1029,6 +333,10 @@ function renderInspector(point) {
       sideBadge.textContent = '🔴 僅按【左腳底】外側（右腳無此區）';
       sideBadge.style.background = 'rgba(184, 61, 46, 0.16)';
       sideBadge.style.color = '#8A2519';
+    } else if ('ear' in point.views) {
+      sideBadge.textContent = '👂 左右雙耳對稱（雙耳皆可對捏或貼耳豆）';
+      sideBadge.style.background = 'rgba(196, 137, 59, 0.18)';
+      sideBadge.style.color = '#7A4F13';
     } else if ('sole' in point.views) {
       sideBadge.textContent = '🦶 左右雙腳對稱（雙腳皆有・建議先左腳後右腳）';
       sideBadge.style.background = 'rgba(196, 137, 59, 0.18)';
@@ -1236,6 +544,11 @@ function updatePlaylistBannerUI() {
     });
   });
 
+  const editBtn = document.getElementById('editPlaylistBtn');
+  if (editBtn) {
+    editBtn.style.display = state.activePresetId === 'fav_custom' ? 'inline-block' : 'none';
+  }
+
   if (state.playlist.isPlaying) {
     playBtn.textContent = `⏸ 停止處方連播 (${state.playlist.currentIndex + 1}/${state.playlist.queue.length})`;
     playBtn.classList.add('playing');
@@ -1308,10 +621,11 @@ function toggleTimer() {
   }
 
   const { pressSeconds, releaseSeconds, totalDurationSec } = point.massageGuide.rhythm;
+  const effectiveDurationSec = state.playlist.durations?.[point.id] || totalDurationSec;
   if (state.timer.phase === 'idle') {
     state.timer.phase = 'press';
     state.timer.phaseTimeLeft = pressSeconds;
-    state.timer.totalTimeLeft = totalDurationSec;
+    state.timer.totalTimeLeft = effectiveDurationSec;
   }
 
   state.timer.running = true;
@@ -1327,6 +641,7 @@ function toggleTimer() {
       ring.className = 'breathing-orb-ring pressing';
       if (triggerSound) {
         playSingingBowl('press');
+        vibrate('press');
         speakGuide('深按');
       }
     } else {
@@ -1334,6 +649,7 @@ function toggleTimer() {
       ring.className = 'breathing-orb-ring releasing';
       if (triggerSound) {
         playSingingBowl('release');
+        vibrate('release');
         speakGuide('放鬆');
       }
     }
@@ -1361,6 +677,7 @@ function toggleTimer() {
           selectAcupoint(nextId, true, false);
           updatePlaylistBannerUI();
           playSingingBowl('press');
+          vibrate('switchSide');
           if (nextPt) {
             speakGuide(`完成${point.name}穴，現在換下一穴：${nextPt.name}穴，請深按`);
           }
@@ -1373,6 +690,7 @@ function toggleTimer() {
           phaseEl.textContent = '處方圓滿完成';
           secEl.textContent = '🎉';
           playSingingBowl('press');
+          vibrate('done');
           speakGuide('恭喜您完成整套養生處方按揉，請紀錄下方按後手感並喝溫水休息');
           return;
         }
@@ -1381,15 +699,17 @@ function toggleTimer() {
       phaseEl.textContent = '功德圓滿';
       secEl.textContent = '✓';
       playSingingBowl('press');
+      vibrate('done');
       speakGuide('按揉完成，請於下方點擊紀錄您的按後痛感');
       return;
     }
 
-    // 若為左右雙穴，在計時過半（剩餘 30 秒）時自動提示「換另一側按揉」
-    const halfSec = Math.floor(totalDurationSec / 2);
+    // 若為左右雙穴，在計時過半（剩餘一半秒數）時自動提示「換另一側按揉」
+    const halfSec = Math.floor(effectiveDurationSec / 2);
     if (point.massageGuide.rhythm.bilateral && state.timer.totalTimeLeft === halfSec) {
       playSingingBowl('press');
-      speakGuide('已滿三十秒，若單手按揉請換另一側');
+      vibrate('switchSide');
+      speakGuide('時間過半，若單手按揉請換另一側');
       phaseEl.textContent = '🔄 請換另一側・深按';
       secEl.textContent = `${state.timer.phaseTimeLeft}s`;
       return;
@@ -1487,9 +807,54 @@ function renderPresetRow() {
   });
 }
 
-// 渲染處方籤與症狀快篩列
+// 渲染處方籤、姿勢情境入口與症狀快篩列
 function initFilters() {
   renderPresetRow();
+
+  const postureRow = document.getElementById('postureRow');
+  if (postureRow) {
+    postureRow.innerHTML =
+      `<span class="tag-label">依當下姿勢：</span>` +
+      POSTURE_SCENARIOS.map(
+        (sc) => `<button type="button" class="symptom-chip posture-chip" data-posture="${sc.id}" title="${sc.desc}">${sc.label}</button>`
+      ).join('');
+
+    postureRow.querySelectorAll('.posture-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const pid = chip.getAttribute('data-posture');
+        if (state.activePosture === pid) {
+          clearAllFilters();
+          return;
+        }
+        const scenario = POSTURE_SCENARIOS.find((s) => s.id === pid);
+        if (!scenario) return;
+        state.activePosture = pid;
+        state.activePresetId = null;
+        state.activeSymptomTag = null;
+        state.playlist.isPlaying = false;
+        updatePlaylistBannerUI();
+        document.querySelectorAll('.preset-card, .symptom-chip').forEach((c) => c.classList.remove('active'));
+        chip.classList.add('active');
+
+        const matched = ACUPOINTS.filter(scenario.filter);
+        state.highlightedIds = new Set(matched.map((p) => p.id));
+        const clearBtn = document.getElementById('clearFilterBtn');
+        if (clearBtn) clearBtn.style.display = 'inline-block';
+
+        if (scenario.preferredView) {
+          state.currentView = scenario.preferredView;
+          updateViewTabButtons();
+        }
+        if (matched.length > 0) {
+          const inView = matched.find((p) => p.views[state.currentView]) || matched[0];
+          selectAcupoint(inView.id, true);
+        } else {
+          renderBodyCanvas();
+        }
+        showToast(`${scenario.label}：已篩選出 ${matched.length} 個免折騰好按穴位`);
+      });
+    });
+  }
 
   const allSymptoms = ['肩頸痠痛', '頭痛', '失眠焦慮', '用眼過度', '胃脹噁心', '下肢水腫', '經痛', '手腳冰冷', '腰痠背痛', '鼻塞流涕', '咽喉乾痛', '耳鳴重聽'];
   const tagsRow = document.getElementById('symptomTagsRow');
@@ -1528,14 +893,16 @@ function applyColloquialSearch(rawQuery) {
 
   state.activePresetId = null;
   state.activeSymptomTag = null;
+  state.activePosture = null;
   state.playlist.isPlaying = false;
   updatePlaylistBannerUI();
   document.querySelectorAll('.preset-card, .symptom-chip').forEach((el) => el.classList.remove('active'));
 
   const matchedSet = new Set();
 
-  // 1. 比對口語同義詞字典
-  Object.entries(COLLOQUIAL_SYNONYMS).forEach(([keyword, pointIds]) => {
+  // 1. 比對口語同義詞字典（含全身穴位與耳穴同義詞）
+  const combinedSynonyms = { ...COLLOQUIAL_SYNONYMS, ...EAR_SYNONYMS };
+  Object.entries(combinedSynonyms).forEach(([keyword, pointIds]) => {
     if (keyword.includes(q) || q.includes(keyword)) {
       pointIds.forEach((id) => matchedSet.add(id));
     }
@@ -1762,10 +1129,94 @@ function bindEvents() {
 
   document.getElementById('startPlaylistBtn')?.addEventListener('click', togglePlaylistExecution);
 
+  document.getElementById('editPlaylistBtn')?.addEventListener('click', () => {
+    renderPresetEditorModal(ACUPOINTS, () => {
+      renderPresetRow();
+      updatePlaylistBannerUI();
+      const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+      if (currentPt) renderInspector(currentPt);
+    });
+  });
+
+  // 🔗 分享穴位連結
+  document.getElementById('sharePointBtn')?.addEventListener('click', () => {
+    const pt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+    if (pt) shareAcupointLink(pt);
+  });
+
+  // 🌙 夜間護眼模式切換
+  document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
+    const nextMode = cycleThemeMode();
+    const labelMap = { auto: '跟隨系統自動切換', dark: '夜間護眼深色模式', light: '日間宣紙淺色模式' };
+    showToast(`🎨 已切換為：${labelMap[nextMode]}`);
+  });
+
+  // ⏰ 每日按穴提醒
+  document.getElementById('reminderToggleBtn')?.addEventListener('click', () => {
+    toggleDailyReminder('21:30');
+  });
+
+  // 📤 備份匯出 / 📥 備份還原
+  document.getElementById('backupExportBtn')?.addEventListener('click', async () => {
+    const res = await exportBackup();
+    if (res === 'downloaded') showToast('📤 已下載本機收藏與體質紀錄備份檔 (.json)');
+    else if (res === 'shared') showToast('📤 已匯出備份檔');
+  });
+
+  const backupInput = document.getElementById('backupFileInput');
+  document.getElementById('backupImportBtn')?.addEventListener('click', () => {
+    backupInput?.click();
+  });
+  backupInput?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const summary = await importBackup(file, 'merge');
+      initThemeListener();
+      renderPresetRow();
+      updatePlaylistBannerUI();
+      const pt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+      if (pt) renderInspector(pt);
+      showToast(`📥 還原成功！共 ${summary.favorites} 顆收藏穴位、${summary.logs} 筆體感紀錄`);
+    } catch (err) {
+      showToast(`⚠️ 匯入失敗：${err.message || '檔案格式不符'}`);
+    } finally {
+      backupInput.value = '';
+    }
+  });
+
+  // 📦 AR 離線模型包預載按鈕
+  const arPackBtn = document.getElementById('preloadArPackBtn');
+  const refreshArPackBtnLabel = async () => {
+    if (!arPackBtn) return;
+    const status = await getArPackStatus();
+    if (status.supported && status.cached === status.total && status.total > 0) {
+      arPackBtn.textContent = '✓ AR離線已就緒';
+    }
+  };
+  arPackBtn?.addEventListener('click', async () => {
+    if (!arPackBtn) return;
+    arPackBtn.disabled = true;
+    try {
+      await preloadArPack(({ done, total, label }) => {
+        arPackBtn.textContent = `⏳ ${done}/${total} ${label}`;
+      });
+      arPackBtn.textContent = '✓ AR離線已就緒';
+      showToast('📦 AR 手部與臉部 AI 模型已存入離線快取，無網路也能開 AR！');
+    } catch (err) {
+      arPackBtn.textContent = '📦 重試離線包';
+      showToast(`⚠️ 離線包下載失敗：${err.message || '請確認網路連線'}`);
+    } finally {
+      arPackBtn.disabled = false;
+    }
+  });
+
   document.getElementById('headerArBtn')?.addEventListener('click', () => {
+    refreshArPackBtnLabel();
     openArModal(state.selectedPointId);
   });
   document.getElementById('inspectorArBtn')?.addEventListener('click', () => {
+    refreshArPackBtnLabel();
     openArModal(state.selectedPointId);
   });
 
@@ -1774,19 +1225,24 @@ function bindEvents() {
   });
 }
 
-// 註冊 PWA 離線 Service Worker
-function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  }
-}
-
 // 啟動應用
 window.addEventListener('DOMContentLoaded', () => {
   loadPersistedData();
+  initThemeListener();
+  startReminderScheduler();
   initZiwuLiuzhu();
   initFilters();
+  initCanvasGestures();
   bindEvents();
-  selectAcupoint('LI4', false);
-  registerServiceWorker();
+
+  const deep = readDeepLinkFromUrl(ACUPOINTS);
+  if (deep.view) {
+    state.currentView = deep.view;
+    updateViewTabButtons();
+  }
+  selectAcupoint(deep.pointId || 'LI4', !deep.view);
+
+  registerServiceWorkerWithUpdates(() => {
+    showToast('✨ 本草尋穴已於背景更新至最新版本，重新整理即可生效', 4500);
+  });
 });

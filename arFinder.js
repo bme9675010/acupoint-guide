@@ -1,9 +1,9 @@
 // WebRTC + MediaPipe 端側 AI 即時手部與臉部穴位 AR 追蹤模組（零雲端費用，支援 iPhone 13 WebGL GPU 加速）
 
-const VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
-const WASM_PATH = `${VISION_CDN}/wasm`;
-const HAND_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
-const FACE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+export const VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+export const WASM_PATH = `${VISION_CDN}/wasm`;
+export const HAND_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+export const FACE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
 // 支援 AR 視覺定位的穴位清單與模式映射（共 13 個手部與臉部黃金穴位）
 export const AR_SUPPORTED_POINTS = {

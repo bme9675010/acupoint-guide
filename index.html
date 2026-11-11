@@ -32,10 +32,26 @@
         📷 AR 鏡頭自拍找穴
       </button>
 
-      <label class="pregnancy-safe-toggle" title="開啟後自動標示並於處方連播中跳過合谷、三陰交、肩井、崑崙四大孕期禁穴">
+      <label id="pregnancySafeToggle" class="pregnancy-safe-toggle" title="開啟後自動標示並於處方連播中跳過合谷、三陰交、肩井、崑崙等孕期禁穴">
         <input type="checkbox" id="pregnancySafeCheckbox" />
         <span>🤰 孕期安全鎖</span>
       </label>
+
+      <button type="button" id="themeToggleBtn" class="util-pill-btn" title="切換日間宣紙／夜間護眼／跟隨系統深色模式">
+        ☀️ 日間(自動)
+      </button>
+
+      <button type="button" id="reminderToggleBtn" class="util-pill-btn" title="設定每日 21:30 睡前按穴提醒通知或下載行事曆提醒">
+        ⏰ 每日提醒
+      </button>
+
+      <button type="button" id="backupExportBtn" class="util-pill-btn" title="匯出收藏穴位與體質紀錄備份 JSON">
+        📤 備份
+      </button>
+      <button type="button" id="backupImportBtn" class="util-pill-btn" title="匯入備份 JSON 還原收藏與紀錄">
+        📥 還原
+      </button>
+      <input type="file" id="backupFileInput" accept=".json,application/json" style="display:none;" />
 
       <div id="ziwuBanner" class="ziwu-banner" title="點擊篩選當令經絡推薦穴位">
         <span id="ziwuBadge" class="ziwu-badge">時辰載入中</span>
@@ -72,13 +88,17 @@
         <span id="playlistTitle" class="playlist-title">🌿 辦公室肩頸急救處方</span>
         <div id="playlistSteps" class="playlist-steps"></div>
       </div>
-      <div class="playlist-actions">
+      <div class="playlist-actions" style="display:flex; gap:8px; align-items:center;">
+        <button type="button" id="editPlaylistBtn" class="util-pill-btn" style="display:none; background:rgba(255,255,255,0.16); color:#FFF; border-color:rgba(255,255,255,0.35);">
+          ✏️ 調整順序/秒數
+        </button>
         <button type="button" id="startPlaylistBtn" class="btn-playlist-play">
           ▶️ 連續跟練整套處方
         </button>
       </div>
     </div>
 
+    <div id="postureRow" class="symptom-tags-row" style="margin-bottom: 6px;" aria-label="依當下姿勢情境尋穴"></div>
     <div id="symptomTagsRow" class="symptom-tags-row" aria-label="單一症狀快篩"></div>
   </section>
 
@@ -94,6 +114,7 @@
           <button type="button" class="view-btn" data-view="hand">手部特寫</button>
           <button type="button" class="view-btn" data-view="foot">足腿特寫</button>
           <button type="button" class="view-btn" data-view="sole">🦶 足底反射區</button>
+          <button type="button" class="view-btn" data-view="ear">👂 耳穴全息</button>
         </div>
 
         <div class="canvas-right-controls">
@@ -142,6 +163,9 @@
         <div class="inspector-header-btns">
           <button type="button" id="favPointBtn" class="fav-point-btn" title="加入我的收藏專屬處方">
             ☆ 收藏
+          </button>
+          <button type="button" id="sharePointBtn" class="fav-point-btn" title="複製或分享此穴位的專屬連結給親友">
+            🔗 分享
           </button>
           <button type="button" id="inspectorArBtn" class="inspector-ar-btn">
             📷 AR 實景對穴
@@ -327,6 +351,7 @@
           <p id="arStatusText" class="ar-status-text">準備啟動相機...</p>
         </div>
         <div class="ar-header-btns">
+          <button type="button" id="preloadArPackBtn" class="ar-ctrl-btn" title="預先將 AI 手部與臉部模型存入手機快取，離線也能秒開 AR">📦 離線包</button>
           <button type="button" id="freezeArBtn" class="ar-freeze-btn">❄️ 定格畫面</button>
           <button type="button" id="countdownFreezeBtn" class="ar-ctrl-btn">⏱️ 3秒自拍定格</button>
           <button type="button" id="flipCameraBtn" class="ar-ctrl-btn">🔄 翻轉鏡頭</button>

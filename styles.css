@@ -1526,3 +1526,280 @@ body {
   border-color: rgba(196, 137, 59, 0.35);
 }
 
+/* =========================================================
+   🌙 夜間護眼深色模式 + 雙指縮放 + 熱力圖 + 處方編輯器 + Toast
+   ========================================================= */
+[data-theme="dark"] {
+  --bg-paper: #141B17;
+  --bg-card: #1C2621;
+  --bg-parchment: #24312A;
+  --ink-dark: #ECE6DA;
+  --ink-muted: #B5ADA0;
+  --ink-light: #8C8477;
+  --herb-deep: #8BC4A6;
+  --herb-mid: #68A385;
+  --herb-soft: #26382F;
+  --cinnabar: #E06353;
+  --cinnabar-soft: #382220;
+  --amber-gold: #E0A858;
+  --amber-soft: #332A1C;
+  --border-ink: rgba(236, 230, 218, 0.16);
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .top-header {
+  background: rgba(20, 27, 23, 0.92);
+}
+
+[data-theme="dark"] .svg-stage,
+[data-theme="dark"] .closeup-svg-wrap {
+  background: #1A231E;
+}
+
+[data-theme="dark"] .stage-legend {
+  background: rgba(28, 38, 33, 0.92);
+}
+
+[data-theme="dark"] .diet-tea-card {
+  background: linear-gradient(145deg, #1E2923 0%, #17201B 100%);
+}
+
+[data-theme="dark"] .diet-cvs-card,
+[data-theme="dark"] .diet-by-pain-item.matched,
+[data-theme="dark"] .hit-box.correct {
+  background: #1F3328;
+  color: #D9EFE2;
+}
+
+[data-theme="dark"] .diet-avoid-card,
+[data-theme="dark"] .hit-box.wrong {
+  background: #33201E;
+  color: #F5D2CC;
+}
+
+[data-theme="dark"] .diet-avoid-text {
+  color: #F5B5AA !important;
+}
+
+/* 頂部工具膠囊按鈕 */
+.util-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-ink);
+  background: var(--bg-card);
+  color: var(--ink-dark);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.util-pill-btn:hover {
+  border-color: var(--herb-deep);
+  background: var(--herb-soft);
+}
+
+.posture-chip {
+  border-color: rgba(42, 72, 58, 0.35);
+  font-weight: 600;
+}
+
+/* 畫布雙指縮放與鍵盤焦點無障礙 */
+.body-svg {
+  touch-action: none;
+  cursor: grab;
+}
+
+.body-svg:active {
+  cursor: grabbing;
+}
+
+.acupoint-node:focus-visible {
+  outline: none;
+}
+
+.acupoint-node:focus-visible .acupoint-pulse {
+  stroke: var(--amber-gold);
+  stroke-width: 3px;
+  fill: rgba(196, 137, 59, 0.35);
+}
+
+/* 📊 近 30 天經絡體感熱力圖 */
+.meridian-heatmap-box {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-ink);
+}
+
+.heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+}
+
+.heatmap-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  color: var(--ink-muted);
+}
+
+.hm-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.hm-dot.sharp,
+.hm-seg.sharp {
+  background: #B83D2E;
+}
+
+.hm-dot.empty,
+.hm-seg.empty {
+  background: #C4893B;
+}
+
+.hm-dot.smooth,
+.hm-seg.smooth {
+  background: #2A7352;
+}
+
+.heatmap-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+}
+
+.heatmap-label {
+  width: 112px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink-dark);
+}
+
+.heatmap-count {
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+}
+
+.heatmap-bar {
+  flex: 1;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(140, 109, 70, 0.15);
+  overflow: hidden;
+  display: flex;
+}
+
+.hm-seg {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* ✏️ 收藏處方順序與秒數編輯器 */
+.editor-rows-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.editor-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-ink);
+}
+
+.editor-step-num {
+  font-weight: 700;
+  color: var(--cinnabar);
+  width: 22px;
+}
+
+.editor-pt-name {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.editor-sec-label {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.editor-sec-select {
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-ink);
+  background: var(--bg-card);
+  color: var(--ink-dark);
+}
+
+.editor-row-btns {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.editor-move-btn,
+.editor-del-btn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-ink);
+  background: var(--bg-card);
+  color: var(--ink-dark);
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.editor-del-btn {
+  color: var(--cinnabar);
+}
+
+/* 🔔 Toast 浮動通知 */
+.app-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translate(-50%, 20px);
+  background: rgba(35, 33, 30, 0.94);
+  color: #FAF7F0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  max-width: 92vw;
+  text-align: center;
+}
+
+.app-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+
