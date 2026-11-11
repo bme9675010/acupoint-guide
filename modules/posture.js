@@ -1,6 +1,13 @@
 // 🪑 姿勢情境快篩入口（「站捷運/通勤免脫鞋」、「辦公桌坐姿」、「睡前躺床」）
 export const POSTURE_SCENARIOS = [
   {
+    id: 'parenting',
+    label: '👶 親子/小兒推拿',
+    desc: '幼童開脾消積食、安神止夜啼、小兒發燒、青少年轉骨長高',
+    preferredView: 'child',
+    filter: (pt) => 'child' in pt.views || pt.id.startsWith('PED-') || pt.id === 'GB39' || pt.id === 'ST2'
+  },
+  {
     id: 'commute',
     label: '🚇 通勤/站立免脫鞋',
     desc: '單手可按、不必脫鞋捲褲管（手部＋耳穴＋臉部）',

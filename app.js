@@ -5,6 +5,7 @@ import {
   DIETARY_THERAPY,
   ZIWU_DIET,
   EAR_SYNONYMS,
+  CHILD_SYNONYMS,
   getCloseupSvgMarkup
 } from './data/index.js';
 import { AR_SUPPORTED_POINTS, openArModal, initArControls } from './arFinder.js';
@@ -104,7 +105,7 @@ function selectAcupoint(pointId, autoSwitchViewIfNeeded = false, keepTimerIfPlay
 
   // 若當前視圖沒有這個穴位，優先切換到局部特寫視圖或正反面視圖
   if (autoSwitchViewIfNeeded && !point.views[state.currentView]) {
-    const preferredOrder = ['ear', 'sole', 'head', 'hand', 'foot', 'front', 'back'];
+    const preferredOrder = ['child', 'ear', 'sole', 'head', 'hand', 'foot', 'front', 'back'];
     const availableView = preferredOrder.find((v) => v in point.views) || Object.keys(point.views)[0];
     if (availableView) {
       state.currentView = availableView;
@@ -128,8 +129,8 @@ function applySvgZoomForPoint(point) {
   if (!svg) return;
 
   const coord = point?.views[state.currentView];
-  // 特寫視圖 (head / hand / foot / sole / ear) 本身已經是放大圖，不需再裁切 viewBox
-  if (!state.autoZoomEnabled || !coord || ['head', 'hand', 'foot', 'sole', 'ear'].includes(state.currentView)) {
+  // 特寫視圖 (head / hand / foot / sole / ear / child) 本身已經是放大圖，不需再裁切 viewBox
+  if (!state.autoZoomEnabled || !coord || ['head', 'hand', 'foot', 'sole', 'ear', 'child'].includes(state.currentView)) {
     resetViewBoxTransform();
     return;
   }
@@ -325,7 +326,19 @@ function renderInspector(point) {
   const sideBadge = document.getElementById('pointSideBadge');
   if (sideBadge) {
     const midlineIds = new Set(['GV20', 'EX-HN3', 'CV17', 'CV12', 'CV6', 'GV14']);
-    if (point.id === 'REFLEX-LIVER') {
+    if (point.id.startsWith('PED-')) {
+      sideBadge.textContent = '👶 小兒推拿特定穴（手法宜輕快柔和・塗乳液防破皮）';
+      sideBadge.style.background = 'rgba(42, 115, 82, 0.16)';
+      sideBadge.style.color = '#1D4734';
+    } else if (point.id === 'GB39') {
+      sideBadge.textContent = '🌱 青少年轉骨長高要穴（八會穴之髓會・雙側皆可按）';
+      sideBadge.style.background = 'rgba(196, 137, 59, 0.2)';
+      sideBadge.style.color = '#7A4F13';
+    } else if (point.id === 'ST2') {
+      sideBadge.textContent = '👀 學生護眼操核心穴（雙側眼眶眶下孔・輕柔按揉）';
+      sideBadge.style.background = 'rgba(196, 137, 59, 0.2)';
+      sideBadge.style.color = '#7A4F13';
+    } else if (point.id === 'REFLEX-LIVER') {
       sideBadge.textContent = '🟢 僅按【右腳底】外側（左腳無此區）';
       sideBadge.style.background = 'rgba(42, 115, 82, 0.16)';
       sideBadge.style.color = '#1D4734';
@@ -333,6 +346,10 @@ function renderInspector(point) {
       sideBadge.textContent = '🔴 僅按【左腳底】外側（右腳無此區）';
       sideBadge.style.background = 'rgba(184, 61, 46, 0.16)';
       sideBadge.style.color = '#8A2519';
+    } else if ('child' in point.views) {
+      sideBadge.textContent = '👶 小兒經絡與青少年生長穴（輕揉撫按）';
+      sideBadge.style.background = 'rgba(42, 72, 58, 0.12)';
+      sideBadge.style.color = '#2A483A';
     } else if ('ear' in point.views) {
       sideBadge.textContent = '👂 左右雙耳對稱（雙耳皆可對捏或貼耳豆）';
       sideBadge.style.background = 'rgba(196, 137, 59, 0.18)';
@@ -636,16 +653,17 @@ function toggleTimer() {
     const prefix = state.playlist.isPlaying
       ? `[處方 ${state.playlist.currentIndex + 1}/${state.playlist.queue.length} ${point.name}] `
       : '';
+    const isChildPoint = point.id.startsWith('PED-');
     if (state.timer.phase === 'press') {
-      phaseEl.textContent = '吐氣・深按';
+      phaseEl.textContent = isChildPoint ? '輕快推撫・柔和' : '吐氣・深按';
       ring.className = 'breathing-orb-ring pressing';
       if (triggerSound) {
         playSingingBowl('press');
         vibrate('press');
-        speakGuide('深按');
+        speakGuide(isChildPoint ? '輕撫' : '深按');
       }
     } else {
-      phaseEl.textContent = '吸氣・緩放';
+      phaseEl.textContent = isChildPoint ? '順時慢撫・放鬆' : '吸氣・緩放';
       ring.className = 'breathing-orb-ring releasing';
       if (triggerSound) {
         playSingingBowl('release');
@@ -856,7 +874,23 @@ function initFilters() {
     });
   }
 
-  const allSymptoms = ['肩頸痠痛', '頭痛', '失眠焦慮', '用眼過度', '胃脹噁心', '下肢水腫', '經痛', '手腳冰冷', '腰痠背痛', '鼻塞流涕', '咽喉乾痛', '耳鳴重聽'];
+  const allSymptoms = [
+    '肩頸痠痛',
+    '頭痛',
+    '失眠焦慮',
+    '用眼過度',
+    '胃脹噁心',
+    '下肢水腫',
+    '經痛',
+    '手腳冰冷',
+    '腰痠背痛',
+    '鼻塞流涕',
+    '咽喉乾痛',
+    '耳鳴重聽',
+    '消化不良',
+    '發燒',
+    '夜啼'
+  ];
   const tagsRow = document.getElementById('symptomTagsRow');
   tagsRow.innerHTML = `<span class="tag-label">依症狀尋穴：</span>` + allSymptoms.map((sym) => `
     <button type="button" class="symptom-chip" data-sym="${sym}">${sym}</button>
@@ -900,8 +934,8 @@ function applyColloquialSearch(rawQuery) {
 
   const matchedSet = new Set();
 
-  // 1. 比對口語同義詞字典（含全身穴位與耳穴同義詞）
-  const combinedSynonyms = { ...COLLOQUIAL_SYNONYMS, ...EAR_SYNONYMS };
+  // 1. 比對口語同義詞字典（含全身穴位、耳穴與小兒推拿轉骨同義詞）
+  const combinedSynonyms = { ...COLLOQUIAL_SYNONYMS, ...EAR_SYNONYMS, ...CHILD_SYNONYMS };
   Object.entries(combinedSynonyms).forEach(([keyword, pointIds]) => {
     if (keyword.includes(q) || q.includes(keyword)) {
       pointIds.forEach((id) => matchedSet.add(id));

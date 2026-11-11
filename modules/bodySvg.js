@@ -1,7 +1,11 @@
 import { getEarBaseSvgMarkup } from '../data/earPoints.js';
+import { getChildBaseSvgMarkup } from '../data/childPoints.js';
 
-// 取得 7 大視圖（正面、背面、頭面特寫、手部特寫、足腿特寫、足底反射區、耳穴全息）的新中式人體與骨骼透視 SVG
+// 取得 8 大視圖（正面、背面、頭面特寫、手部特寫、足腿特寫、足底反射區、耳穴全息、小兒推拿＆轉骨）的新中式人體與骨骼透視 SVG
 export function getBaseBodySvgMarkup(view, xrayOpacity) {
+  if (view === 'child') {
+    return getChildBaseSvgMarkup(xrayOpacity);
+  }
   if (view === 'ear') {
     return getEarBaseSvgMarkup(xrayOpacity);
   }

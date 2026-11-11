@@ -7,7 +7,7 @@ export function readDeepLinkFromUrl(allPoints) {
     const params = new URLSearchParams(window.location.search);
     const pointId = params.get('p');
     const view = params.get('v');
-    const validViews = new Set(['front', 'back', 'head', 'hand', 'foot', 'sole', 'ear']);
+    const validViews = new Set(['front', 'back', 'head', 'hand', 'foot', 'sole', 'ear', 'child']);
 
     let targetPoint = null;
     if (pointId) {

@@ -1,6 +1,6 @@
 // 狀態管理
 export const state = {
-  currentView: 'front',          // 'front' | 'back' | 'head' | 'hand' | 'foot' | 'sole' | 'ear'
+  currentView: 'front',          // 'front' | 'back' | 'head' | 'hand' | 'foot' | 'sole' | 'ear' | 'child'
   selectedPointId: 'LI4',        // 預設選中合谷穴
   activePresetId: null,          // 當前處方籤 ID
   activeSymptomTag: null,        // 當前單一症狀篩選
