@@ -1,5 +1,5 @@
 // 📦 離線能力：AR 模型離線包預載 + Service Worker 更新提示
-import { VISION_CDN, WASM_PATH, HAND_MODEL_URL, FACE_MODEL_URL } from '../arFinder.js';
+import { VISION_CDN, WASM_PATH, HAND_MODEL_URL, FACE_MODEL_URL, POSE_MODEL_URL } from '../arFinder.js';
 
 // 必須與 sw.js 的 AR_CACHE 相同；獨立於 CACHE_NAME，升版時不會被清掉
 export const AR_CACHE = 'acupoint-ar-v1';
@@ -22,7 +22,8 @@ export function getArAssetUrls() {
     { url: `${WASM_PATH}/${wasmBase}.js`, label: 'WASM 載入器', approxMB: 0.2 },
     { url: `${WASM_PATH}/${wasmBase}.wasm`, label: 'WASM 核心', approxMB: 9.5 },
     { url: HAND_MODEL_URL, label: '手部 21 點模型', approxMB: 7.8 },
-    { url: FACE_MODEL_URL, label: '臉部 478 點模型', approxMB: 3.8 }
+    { url: FACE_MODEL_URL, label: '臉部 478 點模型', approxMB: 3.8 },
+    { url: POSE_MODEL_URL, label: '小腿/背部 33 點姿態模型', approxMB: 5.5 }
   ];
 }
 
