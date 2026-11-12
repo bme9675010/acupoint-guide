@@ -1,4 +1,4 @@
-const CACHE_NAME = 'acupoint-guide-v9';
+const CACHE_NAME = 'acupoint-guide-v10';
 const AR_CACHE = 'acupoint-ar-v1'; // AR 模型離線包（約 20MB），不隨版本升級清除
 const KEEP_CACHES = [CACHE_NAME, AR_CACHE];
 

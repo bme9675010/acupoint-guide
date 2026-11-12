@@ -79,6 +79,7 @@
         🔥 已按導 <strong id="totalLogsCount">0</strong> 次
       </div>
     </div>
+    <div id="searchNoResultBanner" class="search-no-result" style="display: none;"></div>
 
     <div id="presetRow" class="preset-row" aria-label="常見症狀養生處方籤"></div>
 
@@ -89,6 +90,9 @@
         <div id="playlistSteps" class="playlist-steps"></div>
       </div>
       <div class="playlist-actions" style="display:flex; gap:8px; align-items:center;">
+        <button type="button" id="sharePlaylistBtn" class="util-pill-btn" style="background:rgba(255,255,255,0.16); color:#FFF; border-color:rgba(255,255,255,0.35);" title="分享此處方給親友">
+          🔗 分享處方
+        </button>
         <button type="button" id="editPlaylistBtn" class="util-pill-btn" style="display:none; background:rgba(255,255,255,0.16); color:#FFF; border-color:rgba(255,255,255,0.35);">
           ✏️ 調整順序/秒數
         </button>
@@ -180,7 +184,12 @@
       <div class="closeup-card">
         <div class="closeup-card-header">
           <span>🔬 1:1 局部骨度與手指量尺特寫圖</span>
-          <span class="closeup-badge">跟著 ① → ② → ③ 找穴</span>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" id="flipCloseupBtn" class="util-pill-btn flip-closeup-btn" title="翻轉為另一側手/腳/耳對照">
+              🔄 換側對照
+            </button>
+            <span class="closeup-badge">跟著 ① → ② → ③ 找穴</span>
+          </div>
         </div>
         <div id="closeupSvgContainer" class="closeup-svg-wrap"></div>
       </div>
@@ -260,7 +269,12 @@
 
         <!-- 🩺 按後痛感體質自我檢測紀錄 -->
         <div class="info-section pain-log-section" style="margin-top: 12px;">
-          <h4>🩺 按完感覺如何？（點擊紀錄「通則不痛」經絡體質＋自動調配食療方）</h4>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h4>🩺 按完感覺如何？（點擊紀錄「通則不痛」經絡體質＋自動調配食療方）</h4>
+            <button type="button" id="undoPainLogBtn" class="util-pill-btn undo-pain-btn" style="display:none;" title="撤銷上一筆紀錄">
+              ↩ 撤銷上一筆
+            </button>
+          </div>
           <div class="pain-btn-group">
             <button type="button" class="pain-log-btn" data-pain="smooth" data-feeling="smooth">
               😌 微痠舒暢<br/><small>氣血通暢</small>
@@ -353,6 +367,7 @@
         </div>
         <div class="ar-header-btns">
           <button type="button" id="footSideBtn" class="ar-ctrl-btn" style="display:none;" title="切換左腳或右腳足底全息投影">🦶 腳底：右腳</button>
+          <button type="button" id="earSideBtn" class="ar-ctrl-btn" style="display:none;" title="切換左耳或右耳全息投影">👂 耳朵：右耳</button>
           <button type="button" id="preloadArPackBtn" class="ar-ctrl-btn" title="預先將 AI 手部、臉部與身體模型存入手機快取，離線也能秒開 AR">📦 離線包</button>
           <button type="button" id="freezeArBtn" class="ar-freeze-btn">❄️ 定格畫面</button>
           <button type="button" id="countdownFreezeBtn" class="ar-ctrl-btn">⏱️ 3秒自拍定格</button>

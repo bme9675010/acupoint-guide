@@ -6,7 +6,7 @@ export const HAND_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/h
 export const FACE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 export const POSE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 
-// 支援 AR 視覺定位的穴位清單與模式映射（涵蓋手部、臉部、小腿骨度、背部雙人捏脊與腳底全息引導）
+// 支援 AR 視覺定位的穴位清單與模式映射（全站 56 穴 100% 完整支援：手/臉/小腿/背部/胸腹/足底/耳穴）
 export const AR_SUPPORTED_POINTS = {
   // ✋ 手部穴位 (HandLandmarker 21 點骨骼追蹤)
   LI4: { mode: 'hand', name: '合谷', hint: '請將「手背或手掌」張開對準鏡頭，紅點即為第二掌骨中點合谷穴' },
@@ -32,30 +32,52 @@ export const AR_SUPPORTED_POINTS = {
   TE17: { mode: 'face', name: '翳風', hint: '請將臉部微側露出耳垂，鎖定耳垂正後方凹窩「翳風穴」' },
   GV20: { mode: 'face', name: '百會', hint: '請將臉部正對鏡頭，沿鼻樑眉心中線向上標示頭頂正中央「百會穴」方位' },
 
-  // 🦵 小腿與足踝穴位 (PoseLandmarker 33 點骨度折量追蹤)
-  ST36: { mode: 'leg', name: '足三里', hint: '請坐姿將「小腿前外側（露出膝蓋外側與腳踝）」對準鏡頭，自動換算 16 寸骨度標出外膝眼下 3 寸足三里穴' },
+  // 🦵 下肢與足踝穴位 (PoseLandmarker 33 點骨度折量追蹤)
+  ST36: { mode: 'leg', name: '足三里', hint: '請坐姿將「小腿前外側（露出膝蓋與腳踝）」對準鏡頭，自動換算 16 寸骨度標出外膝眼下 3 寸足三里穴' },
   GB39: { mode: 'leg', name: '懸鐘', hint: '請將「小腿外側（露出外腳踝）」對準鏡頭，標出外踝尖直上 3 寸懸鐘穴（骨髓會・助長高）' },
   SP6: { mode: 'leg', name: '三陰交', hint: '請將「小腿內側（露出內腳踝）」對準鏡頭，標出內踝尖直上 3 寸脛骨後緣三陰交穴' },
   SP9: { mode: 'leg', name: '陰陵泉', hint: '請將「小腿內側膝關節下方」對準鏡頭，標出脛骨內側髁下方凹陷陰陵泉穴' },
+  SP10: { mode: 'leg', name: '血海', hint: '請將「大腿內側（膝蓋上方）」對準鏡頭，標出髁上內側 2 寸血海穴' },
+  ST40: { mode: 'leg', name: '豐隆', hint: '請將「小腿前外側」對準鏡頭，標出外踝尖直上 8 寸（條口外開一指）化痰要穴豐隆' },
   LR3: { mode: 'leg', name: '太衝', hint: '請將「腳背（大趾與二趾縫）」對準鏡頭，標出第一、二蹠骨結合部前方凹陷太衝穴' },
   KI3: { mode: 'leg', name: '太溪', hint: '請將「內腳踝後方」對準鏡頭，標出內踝尖與跟腱之間凹陷太溪穴' },
+  BL60: { mode: 'leg', name: '崑崙', hint: '請將「外腳踝後方」對準鏡頭，標出外踝尖與跟腱之間凹陷崑崙穴' },
 
-  // 🧘 背部穴位 (PoseLandmarker 雙人輔助/鏡子模式)
+  // 🧘 背部/肩頸/上肢穴位 (PoseLandmarker 姿態追蹤)
   'PED-NIEJI': { mode: 'back', name: '小兒捏脊', hint: '【雙人輔助】請用後鏡頭對準孩子背部（露出雙肩與腰臀），標示長強至大椎捏脊推進路徑' },
   GV14: { mode: 'back', name: '大椎', hint: '【雙人輔助】請鏡頭對準頸背交界處，鎖定第七頸椎棘突下凹窩「大椎穴」' },
+  GB20: { mode: 'back', name: '風池', hint: '【雙人/鏡子】請鏡頭對準後腦枕骨下方兩側凹窩，鎖定風池穴（解頭痛降腦壓）' },
+  GB21: { mode: 'back', name: '肩井', hint: '請鏡頭對準肩部，鎖定大椎穴與肩峰連線中點「肩井穴」' },
   BL23: { mode: 'back', name: '腎俞', hint: '【雙人輔助】請鏡頭對準腰背部（第二腰椎高度），標出脊柱兩側各旁開 1.5 寸雙側腎俞穴' },
   BL40: { mode: 'back', name: '委中', hint: '請將「膝蓋後方膕窩」對準鏡頭，標出膕橫紋正中委中穴（腰背委中求）' },
+  LI11: { mode: 'back', name: '曲池', hint: '請屈肘將「手肘外側橫紋」對準鏡頭，標出手肘橫紋外側端曲池穴（清熱降壓）' },
+
+  // 🫁 正面胸腹穴位 (PoseLandmarker 軀幹正中線追蹤)
+  CV17: { mode: 'torso', name: '膻中', hint: '請將「正面胸部」對準前/後鏡頭，標出兩乳頭連線正中胸骨上膻中穴（寬胸理氣）' },
+  CV12: { mode: 'torso', name: '中脘', hint: '請將「正面腹部」對準鏡頭，標出胸骨下端與肚臍連線中點「中脘穴」（健脾和胃）' },
+  CV6: { mode: 'torso', name: '氣海關元', hint: '請將「下腹部」對準鏡頭，標出肚臍下方 1.5~3 寸氣海與關元要穴（培元補氣）' },
+  ST25: { mode: 'torso', name: '天樞', hint: '請將「肚臍周圍」對準鏡頭，標出肚臍左右旁開 2 寸天樞穴（腸道雙向調理）' },
 
   // 🦶 腳底全息反射區 (Guided AR 足底引導全息投影)
   KI1: { mode: 'foot', name: '湧泉', hint: '請將「腳底板」對準螢幕上的足底引導輪廓框，前掌人字紋凹陷處即為湧泉穴' },
-  'REFLEX-LIVER-HEART': { mode: 'foot', name: '心肺/肝膽反射區', hint: '請將腳底板對準引導虛線框，前掌外側即為心肺/肝膽反射區（左腳心肺、右腳肝膽）' },
-  'REFLEX-KIDNEY': { mode: 'foot', name: '腎臟膀胱排毒鏈', hint: '請將腳底對準引導虛線框，足心凹陷至內踝前即為排毒鏈' },
-  'REFLEX-SHIMIAN': { mode: 'foot', name: '失眠穴', hint: '請將腳跟對準引導框底端，腳後跟正中央紅點即為失眠穴' },
-  'REFLEX-SOLAR': { mode: 'foot', name: '太陽神經叢', hint: '請將腳底對準引導虛線框，前掌中心凹陷即為太陽神經叢' },
-  'REFLEX-STOMACH-DIGEST': { mode: 'foot', name: '胃胰十二指腸區', hint: '請將腳底對準引導虛線框，足弓內側前段即為胃胰消化區' },
-  'REFLEX-REPRODUCTIVE': { mode: 'foot', name: '生殖腺骨盆區', hint: '請將腳底對準引導虛線框，腳後跟圓形全區即為生殖骨盆區' },
-  'REFLEX-HEAD': { mode: 'foot', name: '大腦頭部反射區', hint: '請將腳趾對準引導框頂部，大拇趾肉球即為大腦頭部反射區' },
-  'REFLEX-INNER-NEITING': { mode: 'foot', name: '裡內庭', hint: '請將腳掌對準引導框，第二、三趾縫腳底凹陷處即為裡內庭穴' }
+  'EX-LE-SHIMIAN': { mode: 'foot', name: '失眠穴', hint: '請將腳跟對準引導框底端，腳後跟正中央紅點即為失眠穴（百敲消疲勞）' },
+  'EX-LE-LINEITING': { mode: 'foot', name: '裡內庭', hint: '請將腳掌對準引導框，第二、三趾縫腳底凹陷處即為裡內庭穴（瀉胃火）' },
+  'REFLEX-BRAIN': { mode: 'foot', name: '大腦頭頸反射區', hint: '請將大腳趾對準引導框頂部，大拇趾肉球即為大腦頭頸反射區（消頭痛助眠）' },
+  'REFLEX-EYE-TRAP': { mode: 'foot', name: '眼耳斜方肌區', hint: '請將二至五趾根部對準引導框橫帶，此為眼耳與肩頸斜方肌放鬆區' },
+  'REFLEX-LIVER': { mode: 'foot', footSide: 'right', name: '肝膽反射區(右腳)', hint: '【右腳專屬】請將右腳底對準引導框，前掌外側即為肝膽反射區（排毒解宿醉）' },
+  'REFLEX-HEART': { mode: 'foot', footSide: 'left', name: '心脾反射區(左腳)', hint: '【左腳專屬】請將左腳底對準引導框，前掌外側即為心臟與脾臟反射區（安神舒胸悶）' },
+  'REFLEX-STOMACH': { mode: 'foot', name: '胃脾十二指腸區', hint: '請將腳底對準引導框，足弓內側前段凹陷處即為胃脾消化反射區' },
+  'REFLEX-KIDNEY': { mode: 'foot', name: '腎臟膀胱排毒鏈', hint: '請將腳底對準引導框，足心凹陷至內踝前即為腎輸尿管膀胱排毒鏈' },
+  'REFLEX-PELVIS': { mode: 'foot', name: '生殖骨盆反射區', hint: '請將腳跟對準引導框底部，足後跟圓形全區即為生殖腺與骨盆腔區' },
+
+  // 👂 耳穴全息反射區 (Guided AR 耳廓引導全息投影)
+  'EAR-SHENMEN': { mode: 'ear', name: '耳神門', hint: '請將耳朵對準螢幕上的耳廓引導框，三角窩後上方即為鎮靜助眠第一穴「耳神門」' },
+  'EAR-APEX': { mode: 'ear', name: '耳尖', hint: '請將耳尖對準引導框頂部，耳輪最上折頂尖端即為清熱降火解目赤「耳尖穴」' },
+  'EAR-ZERO': { mode: 'ear', name: '耳中(零點)', hint: '請將耳朵對準引導框，耳輪腳中心凹窩即為平衡自律神經總樞紐「耳中穴」' },
+  'EAR-STOMACH': { mode: 'ear', name: '耳胃區', hint: '請將耳朵對準引導框，耳輪腳消失處周圍即為和胃止酸消噯氣「耳胃區」' },
+  'EAR-LIVER': { mode: 'ear', name: '耳肝區', hint: '請將耳朵對準引導框，耳甲艇後下方即為疏肝理氣明目「耳肝區」' },
+  'EAR-KIDNEY': { mode: 'ear', name: '耳腎區', hint: '請將耳朵對準引導框，耳甲艇上部對耳輪下腳下方即為補腎固腰「耳腎區」' },
+  'EAR-ADRENAL': { mode: 'ear', name: '耳腎上腺', hint: '請將耳朵對準引導框，耳屏下部邊緣即為抗炎抗敏退燒「耳腎上腺(下屏尖)」' }
 };
 
 let visionModule = null;
@@ -70,11 +92,12 @@ const arState = {
   cachedFaceLandmarks: null, // 定格時保留的臉部 478 點座標
   cachedPoseLandmarks: null, // 定格時保留的身體 33 點座標
   countdownTimer: null,      // 3 秒倒數定格計時器
-  mode: 'hand',              // 'hand' | 'face' | 'leg' | 'back' | 'foot'
+  mode: 'hand',              // 'hand' | 'face' | 'leg' | 'back' | 'torso' | 'foot' | 'ear'
   targetPointId: 'LI4',      // 當前主標示穴位
   showAllInMode: true,       // 同時顯示同部位其他穴位作為參照
-  facingMode: 'environment', // 手/腿/背/腳預設後鏡頭('environment')，臉部預設前鏡頭('user')
+  facingMode: 'environment', // 手/腿/背/腹/腳預設後鏡頭('environment')，臉部/耳部預設前鏡頭('user')
   footSide: 'right',         // 'left' | 'right' 腳底引導框左右腳切換
+  earSide: 'right',          // 'left' | 'right' 耳廓引導框左右耳切換
   stream: null,
   rafId: null,
   lastVideoTime: -1,
@@ -84,9 +107,13 @@ const arState = {
 
 // 動態載入 MediaPipe Tasks Vision 並初始化 GPU 模型
 async function ensureDetectorLoaded(mode, onStatusUpdate) {
-  // 足底 Guided AR 模式純靠前端即時幾何投影，秒開零等待
+  // 足底與耳穴 Guided AR 模式純靠前端即時全息投影，秒開零等待
   if (mode === 'foot') {
     onStatusUpdate('🟢 足底 Guided AR 全息投影已就緒，請將腳底對齊金色虛線框');
+    return;
+  }
+  if (mode === 'ear') {
+    onStatusUpdate('🟢 耳穴 Guided AR 全息投影已就緒，請將耳朵對齊引導輪廓');
     return;
   }
 
@@ -128,7 +155,7 @@ async function ensureDetectorLoaded(mode, onStatusUpdate) {
     });
   }
 
-  if ((mode === 'leg' || mode === 'back') && !poseLandmarker) {
+  if ((mode === 'leg' || mode === 'back' || mode === 'torso') && !poseLandmarker) {
     onStatusUpdate('正在啟動 iPhone GPU 身體 33 點姿態模型...');
     poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
       baseOptions: {
@@ -456,10 +483,34 @@ function computeLegAcupoints(poseLandmarks) {
     y: ankle.y + heelVec.y * 0.45
   };
 
-  return { ST36: st36, GB39: gb39, SP6: sp6, SP9: sp9, LR3: lr3, KI3: ki3 };
+  // 7. 血海 (SP10)：屈膝時髁上內側 2 寸
+  const sp10 = {
+    id: 'SP10',
+    name: '血海 (膝上2寸內側)',
+    x: knee.x - legVec.x * 0.125 - normVec.x * 0.08,
+    y: knee.y - legVec.y * 0.125 - normVec.y * 0.08
+  };
+
+  // 8. 豐隆 (ST40)：外踝尖直上 8 寸（條口外開一指，小腿長度 50% 處）
+  const st40 = {
+    id: 'ST40',
+    name: '豐隆 (小腿中點化痰)',
+    x: ankle.x - legVec.x * 0.50 + normVec.x * 0.045,
+    y: ankle.y - legVec.y * 0.50 + normVec.y * 0.045
+  };
+
+  // 9. 崑崙 (BL60)：外踝尖與跟腱之間凹陷處
+  const bl60 = {
+    id: 'BL60',
+    name: '崑崙 (外踝後凹)',
+    x: ankle.x + (heel ? (heel.x - ankle.x) * 0.45 : normVec.x * 0.05),
+    y: ankle.y + (heel ? (heel.y - ankle.y) * 0.45 : normVec.y * 0.05)
+  };
+
+  return { ST36: st36, GB39: gb39, SP6: sp6, SP9: sp9, SP10: sp10, ST40: st40, LR3: lr3, KI3: ki3, BL60: bl60 };
 }
 
-// 根據 33 個身體姿態骨骼點計算背部穴位與小兒捏脊軌跡（雙人互照輔助模式）
+// 根據 33 個身體姿態骨骼點計算背部、肩頸與上肢穴位（雙人互照/鏡子模式）
 function computeBackAcupoints(poseLandmarks) {
   const lShoulder = poseLandmarks[11];
   const rShoulder = poseLandmarks[12];
@@ -539,7 +590,122 @@ function computeBackAcupoints(poseLandmarks) {
     points: bl40Points.length > 0 ? bl40Points : [hipMid]
   };
 
-  return { 'PED-NIEJI': nieji, GV14: gv14, BL23: bl23, BL40: bl40 };
+  // 5. 風池穴 (GB20)：枕骨下兩側凹窩（大椎向上延伸兩側）
+  const gb20Left = {
+    x: gv14.x + spineNorm.x * spineLen * 0.12 + (spineVec.x / spineLen) * 0.06,
+    y: gv14.y + spineNorm.y * spineLen * 0.12 + (spineVec.y / spineLen) * 0.06
+  };
+  const gb20Right = {
+    x: gv14.x - spineNorm.x * spineLen * 0.12 + (spineVec.x / spineLen) * 0.06,
+    y: gv14.y - spineNorm.y * spineLen * 0.12 + (spineVec.y / spineLen) * 0.06
+  };
+  const gb20 = {
+    id: 'GB20',
+    name: '風池 (雙側)',
+    points: [gb20Left, gb20Right]
+  };
+
+  // 6. 肩井穴 (GB21)：大椎與肩峰連線中點
+  const gb21Left = {
+    x: (gv14.x + lShoulder.x) * 0.5,
+    y: (gv14.y + lShoulder.y) * 0.5
+  };
+  const gb21Right = {
+    x: (gv14.x + rShoulder.x) * 0.5,
+    y: (gv14.y + rShoulder.y) * 0.5
+  };
+  const gb21 = {
+    id: 'GB21',
+    name: '肩井 (雙側)',
+    points: [gb21Left, gb21Right]
+  };
+
+  // 7. 曲池穴 (LI11)：屈肘時肘橫紋外側端
+  const lElbow = poseLandmarks[13];
+  const rElbow = poseLandmarks[14];
+  const li11Points = [];
+  if (lElbow && (lElbow.visibility ?? 1) > 0.3) li11Points.push(lElbow);
+  if (rElbow && (rElbow.visibility ?? 1) > 0.3) li11Points.push(rElbow);
+  const li11 = {
+    id: 'LI11',
+    name: '曲池 (手肘外側)',
+    points: li11Points.length > 0 ? li11Points : [shoulderMid]
+  };
+
+  return { 'PED-NIEJI': nieji, GV14: gv14, GB20: gb20, GB21: gb21, BL23: bl23, BL40: bl40, LI11: li11 };
+}
+
+// 🫁 根據 33 個身體姿態骨骼點計算正面胸腹部穴位
+function computeTorsoAcupoints(poseLandmarks) {
+  const lShoulder = poseLandmarks[11];
+  const rShoulder = poseLandmarks[12];
+  const lHip = poseLandmarks[23];
+  const rHip = poseLandmarks[24];
+
+  if (!lShoulder || !rShoulder || !lHip || !rHip) return {};
+
+  const shoulderMid = {
+    x: (lShoulder.x + rShoulder.x) * 0.5,
+    y: (lShoulder.y + rShoulder.y) * 0.5
+  };
+  const hipMid = {
+    x: (lHip.x + rHip.x) * 0.5,
+    y: (lHip.y + rHip.y) * 0.5
+  };
+
+  const torsoVec = { x: hipMid.x - shoulderMid.x, y: hipMid.y - shoulderMid.y };
+  const torsoLen = Math.hypot(torsoVec.x, torsoVec.y);
+  if (torsoLen < 0.05) return {};
+
+  const torsoNorm = {
+    x: -torsoVec.y / torsoLen,
+    y: torsoVec.x / torsoLen
+  };
+
+  // 1. 膻中 (CV17)：兩乳頭連線正中胸骨上（雙肩往下 30%）
+  const cv17 = {
+    id: 'CV17',
+    name: '膻中 (胸骨正中)',
+    x: shoulderMid.x + torsoVec.x * 0.30,
+    y: shoulderMid.y + torsoVec.y * 0.30
+  };
+
+  // 2. 中脘 (CV12)：胸骨下端劍突與肚臍中點（雙肩往下 55%）
+  const cv12 = {
+    id: 'CV12',
+    name: '中脘 (臍上四寸)',
+    x: shoulderMid.x + torsoVec.x * 0.55,
+    y: shoulderMid.y + torsoVec.y * 0.55
+  };
+
+  // 3. 天樞 (ST25)：肚臍高度（雙肩往下 70%）兩側各旁開 2 寸
+  const navel = {
+    x: shoulderMid.x + torsoVec.x * 0.70,
+    y: shoulderMid.y + torsoVec.y * 0.70
+  };
+  const st25Left = {
+    x: navel.x + torsoNorm.x * torsoLen * 0.14,
+    y: navel.y + torsoNorm.y * torsoLen * 0.14
+  };
+  const st25Right = {
+    x: navel.x - torsoNorm.x * torsoLen * 0.14,
+    y: navel.y - torsoNorm.y * torsoLen * 0.14
+  };
+  const st25 = {
+    id: 'ST25',
+    name: '天樞 (臍旁雙側)',
+    points: [st25Left, st25Right]
+  };
+
+  // 4. 氣海・關元 (CV6)：肚臍下 1.5~3 寸（雙肩往下 82%）
+  const cv6 = {
+    id: 'CV6',
+    name: '氣海關元 (下腹丹田)',
+    x: shoulderMid.x + torsoVec.x * 0.82,
+    y: shoulderMid.y + torsoVec.y * 0.82
+  };
+
+  return { CV17: cv17, CV12: cv12, ST25: st25, CV6: cv6 };
 }
 
 // 🦶 繪製腳底 Guided AR 輪廓與反射區全息投影（純 Canvas 數學投影，60 FPS 流暢零延遲）
@@ -591,29 +757,31 @@ function drawGuidedFootOverlay(ctx, W, H, targetPointId, pulse, footSide = 'righ
   ctx.setLineDash([]);
 
   // 2. 足底內部各反射區全息色彩圖
-  // (A) 前掌外側：心肺(左腳) / 肝膽(右腳)
-  const isLiverHeartTarget = targetPointId === 'REFLEX-LIVER-HEART';
+  // (A) 前掌外側：心臟脾臟(左腳) / 肝膽(右腳)
+  const isLiverTarget = targetPointId === 'REFLEX-LIVER';
+  const isHeartTarget = targetPointId === 'REFLEX-HEART';
+  const isLiverOrHeart = isLiverTarget || isHeartTarget;
   ctx.beginPath();
   ctx.ellipse(halfW * 0.35, -halfH * 0.60, halfW * 0.38, halfH * 0.14, 0.1, 0, Math.PI * 2);
-  ctx.fillStyle = isLiverHeartTarget
+  ctx.fillStyle = isLiverOrHeart
     ? `rgba(235, 87, 87, ${0.48 + 0.2 * Math.sin(pulse)})`
     : 'rgba(235, 140, 87, 0.25)';
   ctx.fill();
-  ctx.strokeStyle = isLiverHeartTarget ? '#FFF' : 'rgba(235, 87, 87, 0.6)';
-  ctx.lineWidth = isLiverHeartTarget ? 2.5 : 1.5;
+  ctx.strokeStyle = isLiverOrHeart ? '#FFF' : 'rgba(235, 87, 87, 0.6)';
+  ctx.lineWidth = isLiverOrHeart ? 2.5 : 1.5;
   ctx.stroke();
 
-  // (B) 湧泉穴 & 太陽神經叢（人字紋中心 -halfH * 0.40）
-  const isSolarOrYongquan = targetPointId === 'KI1' || targetPointId === 'REFLEX-SOLAR';
+  // (B) 湧泉穴（人字紋中心 -halfH * 0.40）
+  const isYongquan = targetPointId === 'KI1';
   ctx.beginPath();
-  ctx.arc(0, -halfH * 0.40, (isSolarOrYongquan ? 16 : 9) * pulse, 0, Math.PI * 2);
-  ctx.fillStyle = isSolarOrYongquan ? 'rgba(184, 61, 46, 0.88)' : 'rgba(196, 137, 59, 0.45)';
+  ctx.arc(0, -halfH * 0.40, (isYongquan ? 16 : 9) * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = isYongquan ? 'rgba(184, 61, 46, 0.88)' : 'rgba(196, 137, 59, 0.45)';
   ctx.fill();
   ctx.strokeStyle = '#FFF';
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // (C) 腎臟・輸尿管・膀胱排毒鏈
+  // (C) 腎・輸尿管・膀胱排毒鏈
   const isKidneyTarget = targetPointId === 'REFLEX-KIDNEY';
   ctx.beginPath();
   ctx.moveTo(0, -halfH * 0.28);
@@ -626,46 +794,62 @@ function drawGuidedFootOverlay(ctx, W, H, targetPointId, pulse, footSide = 'righ
   ctx.fillStyle = isKidneyTarget ? '#0288D1' : 'rgba(2, 136, 209, 0.5)';
   ctx.fill();
 
-  // (D) 胃胰十二指腸 (內側中前段)
-  const isStomachTarget = targetPointId === 'REFLEX-STOMACH-DIGEST';
+  // (D) 胃・脾・十二指腸區 (內側中前段)
+  const isStomachTarget = targetPointId === 'REFLEX-STOMACH';
   ctx.beginPath();
   ctx.ellipse(-halfW * 0.35, -halfH * 0.18, halfW * 0.22, halfH * 0.10, -0.2, 0, Math.PI * 2);
   ctx.fillStyle = isStomachTarget ? 'rgba(255, 179, 0, 0.65)' : 'rgba(255, 179, 0, 0.22)';
   ctx.fill();
 
-  // (E) 失眠穴 & 生殖腺（足跟）
-  const isShimianTarget = targetPointId === 'REFLEX-SHIMIAN' || targetPointId === 'REFLEX-REPRODUCTIVE';
+  // (E) 失眠穴 & 骨盆生殖腺（足跟）
+  const isShimianTarget = targetPointId === 'EX-LE-SHIMIAN';
+  const isPelvisTarget = targetPointId === 'REFLEX-PELVIS';
   ctx.beginPath();
   ctx.ellipse(0, halfH * 0.72, halfW * 0.42, halfH * 0.18, 0, 0, Math.PI * 2);
-  ctx.fillStyle = isShimianTarget ? 'rgba(216, 67, 21, 0.55)' : 'rgba(216, 67, 21, 0.2)';
+  ctx.fillStyle = isPelvisTarget
+    ? `rgba(216, 67, 21, ${0.55 + 0.15 * Math.sin(pulse)})`
+    : 'rgba(216, 67, 21, 0.2)';
   ctx.fill();
-  ctx.strokeStyle = isShimianTarget ? '#FF8A65' : 'rgba(255, 138, 101, 0.4)';
+  ctx.strokeStyle = isPelvisTarget || isShimianTarget ? '#FF8A65' : 'rgba(255, 138, 101, 0.4)';
   ctx.lineWidth = 2;
   ctx.stroke();
   // 失眠穴中心紅點
   ctx.beginPath();
-  ctx.arc(0, halfH * 0.72, (isShimianTarget ? 11 : 6) * pulse, 0, Math.PI * 2);
+  ctx.arc(0, halfH * 0.72, (isShimianTarget ? 12 : 6) * pulse, 0, Math.PI * 2);
   ctx.fillStyle = '#D84315';
   ctx.fill();
   ctx.strokeStyle = '#FFF';
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // (F) 大腦/頭部 (大拇趾)
-  const isHeadTarget = targetPointId === 'REFLEX-HEAD';
+  // (F) 大腦・頭頸反射區 (大拇趾)
+  const isBrainTarget = targetPointId === 'REFLEX-BRAIN';
   ctx.beginPath();
   ctx.arc(-halfW * 0.55, -halfH * 0.78, halfW * 0.22, 0, Math.PI * 2);
-  ctx.fillStyle = isHeadTarget ? 'rgba(123, 31, 162, 0.65)' : 'rgba(123, 31, 162, 0.2)';
+  ctx.fillStyle = isBrainTarget
+    ? `rgba(123, 31, 162, ${0.65 + 0.2 * Math.sin(pulse)})`
+    : 'rgba(123, 31, 162, 0.2)';
   ctx.fill();
 
   // (G) 裡內庭 (二三趾縫)
-  const isNeitingTarget = targetPointId === 'REFLEX-INNER-NEITING';
+  const isLineitingTarget = targetPointId === 'EX-LE-LINEITING';
   ctx.beginPath();
-  ctx.arc(-halfW * 0.10, -halfH * 0.78, (isNeitingTarget ? 9 : 5) * pulse, 0, Math.PI * 2);
+  ctx.arc(-halfW * 0.10, -halfH * 0.78, (isLineitingTarget ? 10 : 5) * pulse, 0, Math.PI * 2);
   ctx.fillStyle = '#E91E63';
   ctx.fill();
   ctx.strokeStyle = '#FFF';
   ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // (H) 眼耳・斜方肌反射區 (二至五趾下方橫帶)
+  const isEyeTrapTarget = targetPointId === 'REFLEX-EYE-TRAP';
+  ctx.beginPath();
+  ctx.roundRect(0, -halfH * 0.76, halfW * 0.85, halfH * 0.10, 6);
+  ctx.fillStyle = isEyeTrapTarget
+    ? `rgba(0, 150, 136, ${0.6 + 0.2 * Math.sin(pulse)})`
+    : 'rgba(0, 150, 136, 0.2)';
+  ctx.fill();
+  ctx.strokeStyle = isEyeTrapTarget ? '#FFF' : 'rgba(0, 150, 136, 0.5)';
   ctx.stroke();
 
   ctx.restore();
@@ -677,7 +861,7 @@ function drawGuidedFootOverlay(ctx, W, H, targetPointId, pulse, footSide = 'righ
   ctx.shadowColor = 'rgba(0,0,0,0.85)';
   ctx.shadowBlur = 6;
   ctx.fillText(
-    `🦶 足底全息投影【${isRight ? '右腳 (外側主肝膽)' : '左腳 (外側主心肺)'}】`,
+    `🦶 足底全息投影【${isRight ? '右腳 (外側主肝膽)' : '左腳 (外側主心脾)'}】`,
     cx,
     top - 18
   );
@@ -685,6 +869,118 @@ function drawGuidedFootOverlay(ctx, W, H, targetPointId, pulse, footSide = 'righ
   ctx.fillStyle = 'rgba(250, 247, 240, 0.95)';
   ctx.fillText(
     '將腳底放進金色虛線框中，點右上角「❄️ 定格」即可鎖定投影精準按穴！',
+    cx,
+    bottom + 22
+  );
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
+}
+
+// 👂 繪製耳穴 Guided AR 全息投影輪廓（純 Canvas 數學投影，60 FPS 流暢）
+function drawGuidedEarOverlay(ctx, W, H, targetPointId, pulse, earSide = 'right') {
+  ctx.save();
+
+  const earH = Math.min(H * 0.74, 460);
+  const earW = earH * 0.62;
+  const cx = W * 0.5;
+  const cy = H * 0.5;
+  const top = cy - earH * 0.5;
+  const bottom = cy + earH * 0.5;
+  const isRight = earSide === 'right';
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (!isRight) {
+    ctx.scale(-1, 1); // 左耳水平鏡向翻轉
+  }
+
+  const halfW = earW * 0.5;
+  const halfH = earH * 0.5;
+
+  // 1. 耳廓外輪廓（Helix + Lobule）
+  ctx.beginPath();
+  ctx.moveTo(halfW * 0.20, halfH * 0.85); // 耳垂底端
+  // 耳垂圓弧
+  ctx.bezierCurveTo(halfW * 0.65, halfH * 0.85, halfW * 0.85, halfH * 0.60, halfW * 0.85, halfH * 0.35);
+  // 耳輪外緣弧線向上
+  ctx.bezierCurveTo(halfW * 0.90, 0, halfW * 0.85, -halfH * 0.60, halfW * 0.50, -halfH * 0.88);
+  // 耳尖折頂
+  ctx.bezierCurveTo(halfW * 0.20, -halfH * 0.98, -halfW * 0.20, -halfH * 0.98, -halfW * 0.50, -halfH * 0.80);
+  // 耳輪前緣向下
+  ctx.bezierCurveTo(-halfW * 0.75, -halfH * 0.65, -halfW * 0.85, -halfH * 0.35, -halfW * 0.55, -halfH * 0.15);
+  // 耳屏與切迹
+  ctx.bezierCurveTo(-halfW * 0.80, halfH * 0.05, -halfW * 0.70, halfH * 0.35, -halfW * 0.25, halfH * 0.60);
+  ctx.bezierCurveTo(-halfW * 0.10, halfH * 0.75, 0, halfH * 0.85, halfW * 0.20, halfH * 0.85);
+  ctx.closePath();
+
+  ctx.fillStyle = 'rgba(25, 45, 38, 0.45)';
+  ctx.fill();
+  ctx.strokeStyle = '#F4C476';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 5]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 2. 對耳輪與三角窩內部構造線
+  ctx.beginPath();
+  ctx.moveTo(halfW * 0.30, halfH * 0.35);
+  ctx.bezierCurveTo(halfW * 0.40, -halfH * 0.15, halfW * 0.35, -halfH * 0.45, 0, -halfH * 0.65);
+  ctx.strokeStyle = 'rgba(196, 137, 59, 0.45)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 3. 各耳穴發光靶心
+  const earPoints = [
+    { id: 'EAR-APEX', name: '耳尖', x: 0, y: -halfH * 0.94 },
+    { id: 'EAR-SHENMEN', name: '耳神門', x: -halfW * 0.22, y: -halfH * 0.68 },
+    { id: 'EAR-ZERO', name: '耳中(零點)', x: -halfW * 0.05, y: -halfH * 0.15 },
+    { id: 'EAR-STOMACH', name: '耳胃區', x: -halfW * 0.14, y: -halfH * 0.28 },
+    { id: 'EAR-LIVER', name: '耳肝區', x: -halfW * 0.30, y: -halfH * 0.32 },
+    { id: 'EAR-KIDNEY', name: '耳腎區', x: -halfW * 0.18, y: -halfH * 0.46 },
+    { id: 'EAR-ADRENAL', name: '耳腎上腺', x: -halfW * 0.68, y: halfH * 0.12 }
+  ];
+
+  earPoints.forEach((ep) => {
+    const isTarget = targetPointId === ep.id;
+    ctx.beginPath();
+    ctx.arc(ep.x, ep.y, (isTarget ? 14 : 7) * pulse, 0, Math.PI * 2);
+    ctx.fillStyle = isTarget ? 'rgba(184, 61, 46, 0.88)' : 'rgba(196, 137, 59, 0.45)';
+    ctx.fill();
+    ctx.strokeStyle = isTarget ? '#FFF' : 'rgba(255, 255, 255, 0.7)';
+    ctx.lineWidth = isTarget ? 2.5 : 1.5;
+    ctx.stroke();
+
+    // 標籤文字
+    if (isTarget) {
+      ctx.save();
+      if (!isRight) ctx.scale(-1, 1);
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#FFF';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 4;
+      ctx.fillText(ep.name, ep.x * (isRight ? 1 : -1) + 16, ep.y + 4);
+      ctx.restore();
+    }
+  });
+
+  ctx.restore();
+
+  // 4. 中文標題與說明
+  ctx.font = 'bold 15px "PingFang TC", "Microsoft JhengHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#F4C476';
+  ctx.shadowColor = 'rgba(0,0,0,0.85)';
+  ctx.shadowBlur = 6;
+  ctx.fillText(
+    `👂 耳穴全息引導【${isRight ? '右耳' : '左耳'}】`,
+    cx,
+    top - 18
+  );
+  ctx.font = '12px "PingFang TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillStyle = 'rgba(250, 247, 240, 0.95)';
+  ctx.fillText(
+    '將耳朵放進金色虛線框中，點右上角「❄️ 定格」即可對照鏡子精準貼按！',
     cx,
     bottom + 22
   );
@@ -743,6 +1039,7 @@ export async function openArModal(initialPointId = 'LI4') {
   const statusEl = document.getElementById('arStatusText');
   const hintEl = document.getElementById('arHintBanner');
   const footSideBtn = document.getElementById('footSideBtn');
+  const earSideBtn = document.getElementById('earSideBtn');
 
   if (!modal || !video || !canvas) return;
 
@@ -750,8 +1047,11 @@ export async function openArModal(initialPointId = 'LI4') {
   const pointConfig = AR_SUPPORTED_POINTS[initialPointId] || AR_SUPPORTED_POINTS.LI4;
   arState.targetPointId = initialPointId in AR_SUPPORTED_POINTS ? initialPointId : 'LI4';
   arState.mode = pointConfig.mode;
-  // 臉部預設前鏡頭 ('user')，手/腿/背/腳預設後鏡頭 ('environment')
-  arState.facingMode = arState.mode === 'face' ? 'user' : 'environment';
+  if (pointConfig.footSide) {
+    arState.footSide = pointConfig.footSide;
+  }
+  // 臉部與耳穴預設前鏡頭 ('user')，手/腿/背/腹/腳預設後鏡頭 ('environment')
+  arState.facingMode = arState.mode === 'face' || arState.mode === 'ear' ? 'user' : 'environment';
   arState.isOpen = true;
 
   modal.classList.add('open');
@@ -761,6 +1061,10 @@ export async function openArModal(initialPointId = 'LI4') {
   if (footSideBtn) {
     footSideBtn.style.display = arState.mode === 'foot' ? 'inline-block' : 'none';
     footSideBtn.textContent = `🦶 腳底：${arState.footSide === 'right' ? '右腳 (換左腳)' : '左腳 (換右腳)'}`;
+  }
+  if (earSideBtn) {
+    earSideBtn.style.display = arState.mode === 'ear' ? 'inline-block' : 'none';
+    earSideBtn.textContent = `👂 耳朵：${arState.earSide === 'right' ? '右耳 (換左耳)' : '左耳 (換右耳)'}`;
   }
 
   // 檢查瀏覽器是否允許存取相機（iPhone 非 HTTPS 區網 IP 提示）
@@ -821,7 +1125,9 @@ async function startArSession() {
       face: '臉部 478 特徵點',
       leg: '小腿 16 寸骨度姿態',
       back: '背部雙人姿態追蹤',
-      foot: '足底全息 Guided AR'
+      torso: '正面胸腹正中線追蹤',
+      foot: '足底全息 Guided AR',
+      ear: '耳穴全息 Guided AR'
     };
     statusEl.textContent = `🟢 AI 即時追蹤中（${modeLabels[arState.mode] || ''}）`;
 
@@ -925,7 +1231,7 @@ function renderArLoop() {
       } else if (arState.mode === 'face' && faceLandmarker) {
         const res = faceLandmarker.detectForVideo(video, nowMs);
         arState.cachedFaceLandmarks = res.faceLandmarks || [];
-      } else if ((arState.mode === 'leg' || arState.mode === 'back') && poseLandmarker) {
+      } else if ((arState.mode === 'leg' || arState.mode === 'back' || arState.mode === 'torso') && poseLandmarker) {
         const res = poseLandmarker.detectForVideo(video, nowMs);
         arState.cachedPoseLandmarks = res.landmarks?.[0] || null;
       }
@@ -1089,7 +1395,7 @@ function renderArLoop() {
         statusEl.textContent = '😊 請將臉部對準畫面中央...';
       }
     }
-    // 🦵 3. 小腿模式 (PoseLandmarker 16 寸骨度折量)
+    // 🦵 3. 小腿/下肢模式 (PoseLandmarker 16 寸骨度折量)
     else if (arState.mode === 'leg') {
       const poseLms = arState.cachedPoseLandmarks;
       if (poseLms) {
@@ -1098,7 +1404,7 @@ function renderArLoop() {
 
         if (pointValues.length > 0) {
           if (!arState.isFrozen) {
-            statusEl.textContent = `🟢 已鎖定小腿骨度 (16寸分寸比例)・點「❄️ 定格畫面」即可放著手機按穴`;
+            statusEl.textContent = `🟢 已鎖定下肢骨度 (16寸分寸比例)・點「❄️ 定格畫面」即可放著手機按穴`;
           }
 
           // 繪製膝蓋至腳踝之 16 寸骨度刻度尺
@@ -1132,13 +1438,13 @@ function renderArLoop() {
             drawAcupointMarker(ctx, p.x * W, p.y * H, p.name, isPrimary, pulse);
           });
         } else if (!arState.isFrozen) {
-          statusEl.textContent = '🦵 請露出膝蓋與腳踝，將小腿對準鏡頭畫面...';
+          statusEl.textContent = '🦵 請露出膝蓋與腳踝，將下肢對準鏡頭畫面...';
         }
       } else if (!arState.isFrozen) {
-        statusEl.textContent = '🦵 正在辨識小腿骨骼，請將鏡頭稍拉遠露出小腿...';
+        statusEl.textContent = '🦵 正在辨識下肢骨骼，請將鏡頭稍拉遠露出小腿...';
       }
     }
-    // 🧘 4. 背部模式 (PoseLandmarker 雙人互照/捏脊)
+    // 🧘 4. 背部/肩頸模式 (PoseLandmarker 雙人互照/捏脊)
     else if (arState.mode === 'back') {
       const poseLms = arState.cachedPoseLandmarks;
       if (poseLms) {
@@ -1176,7 +1482,6 @@ function renderArLoop() {
               ctx.lineTo((nieji.to.x + norm.x * off) * W, (nieji.to.y + norm.y * off) * H);
               ctx.stroke();
 
-              // 向上推撫箭頭光點
               const animRatio = ((nowMs % 2000) / 2000);
               const ax = (nieji.from.x + norm.x * off + (nieji.to.x - nieji.from.x) * animRatio) * W;
               const ay = (nieji.from.y + norm.y * off + (nieji.to.y - nieji.from.y) * animRatio) * H;
@@ -1197,33 +1502,91 @@ function renderArLoop() {
             );
           }
 
-          // 標記大椎、腎俞、委中
-          if (backPts.GV14 && (arState.targetPointId === 'GV14' || arState.showAllInMode)) {
-            drawAcupointMarker(ctx, backPts.GV14.x * W, backPts.GV14.y * H, '大椎', arState.targetPointId === 'GV14', pulse);
-          }
-          if (backPts.BL23 && (arState.targetPointId === 'BL23' || arState.showAllInMode)) {
-            backPts.BL23.points.forEach((pt, i) => {
-              drawAcupointMarker(ctx, pt.x * W, pt.y * H, i === 0 ? '腎俞' : '', arState.targetPointId === 'BL23', pulse);
-            });
-          }
-          if (backPts.BL40 && (arState.targetPointId === 'BL40' || arState.showAllInMode)) {
-            backPts.BL40.points.forEach((pt, i) => {
-              drawAcupointMarker(ctx, pt.x * W, pt.y * H, i === 0 ? '委中' : '', arState.targetPointId === 'BL40', pulse);
-            });
-          }
+          // 標記背部與肩頸穴位
+          const markPoint = (ptObj, label) => {
+            if (!ptObj) return;
+            const isPrim = arState.targetPointId === ptObj.id;
+            if (!isPrim && !arState.showAllInMode) return;
+            if (ptObj.points) {
+              ptObj.points.forEach((p, i) => {
+                drawAcupointMarker(ctx, p.x * W, p.y * H, i === 0 ? label : '', isPrim, pulse);
+              });
+            } else {
+              drawAcupointMarker(ctx, ptObj.x * W, ptObj.y * H, label, isPrim, pulse);
+            }
+          };
+
+          markPoint(backPts.GV14, '大椎');
+          markPoint(backPts.GB20, '風池');
+          markPoint(backPts.GB21, '肩井');
+          markPoint(backPts.BL23, '腎俞');
+          markPoint(backPts.BL40, '委中');
+          markPoint(backPts.LI11, '曲池');
         } else if (!arState.isFrozen) {
-          statusEl.textContent = '🧘 請將鏡頭對準後背（露出雙肩與腰臀）...';
+          statusEl.textContent = '🧘 請將鏡頭對準後背或肩部（露出雙肩與腰臀）...';
         }
       } else if (!arState.isFrozen) {
-        statusEl.textContent = '🧘 正在辨識背部輪廓，請請同伴手持鏡頭對準後背...';
+        statusEl.textContent = '🧘 正在辨識姿態輪廓，請請同伴手持鏡頭對準後背...';
       }
     }
-    // 🦶 5. 腳底全息 Guided AR 模式
+    // 🫁 5. 正面胸腹模式 (PoseLandmarker 正面正中線)
+    else if (arState.mode === 'torso') {
+      const poseLms = arState.cachedPoseLandmarks;
+      if (poseLms) {
+        const torsoPts = computeTorsoAcupoints(poseLms);
+        const ptsList = Object.values(torsoPts);
+
+        if (ptsList.length > 0) {
+          if (!arState.isFrozen) {
+            statusEl.textContent = `🟢 已鎖定正面胸腹正中線・點「❄️ 定格畫面」即可放桌上按穴`;
+          }
+
+          // 繪製胸腹正中任脈引導虛線
+          const cv17 = torsoPts.CV17;
+          const cv6 = torsoPts.CV6;
+          if (cv17 && cv6) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(196, 137, 59, 0.6)';
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            ctx.moveTo(cv17.x * W, cv17.y * H);
+            ctx.lineTo(cv6.x * W, cv6.y * H);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          ptsList.forEach((ptObj) => {
+            const isPrim = arState.targetPointId === ptObj.id;
+            if (!isPrim && !arState.showAllInMode) return;
+            if (ptObj.points) {
+              ptObj.points.forEach((p, i) => {
+                drawAcupointMarker(ctx, p.x * W, p.y * H, i === 0 ? ptObj.name : '', isPrim, pulse);
+              });
+            } else {
+              drawAcupointMarker(ctx, ptObj.x * W, ptObj.y * H, ptObj.name, isPrim, pulse);
+            }
+          });
+        } else if (!arState.isFrozen) {
+          statusEl.textContent = '🫁 請將鏡頭對準正面胸腹部（露出雙肩與骨盆）...';
+        }
+      } else if (!arState.isFrozen) {
+        statusEl.textContent = '🫁 正在辨識正面軀幹姿態...';
+      }
+    }
+    // 🦶 6. 腳底全息 Guided AR 模式
     else if (arState.mode === 'foot') {
       if (!arState.isFrozen) {
         statusEl.textContent = '🟢 足底全息引導已就緒・將腳底放入金色框後點「❄️ 定格」即可放桌上按穴';
       }
       drawGuidedFootOverlay(ctx, W, H, arState.targetPointId, pulse, arState.footSide);
+    }
+    // 👂 7. 耳穴全息 Guided AR 模式
+    else if (arState.mode === 'ear') {
+      if (!arState.isFrozen) {
+        statusEl.textContent = '🟢 耳穴全息引導已就緒・將耳朵放入金色框後點「❄️ 定格」即可對照貼按';
+      }
+      drawGuidedEarOverlay(ctx, W, H, arState.targetPointId, pulse, arState.earSide);
     }
   }
 
@@ -1284,6 +1647,15 @@ export function initArControls(onSelectPointInMainApp) {
     });
   }
 
+  // 綁定耳穴左右耳切換按鈕
+  const earSideBtn = document.getElementById('earSideBtn');
+  if (earSideBtn) {
+    earSideBtn.addEventListener('click', () => {
+      arState.earSide = arState.earSide === 'right' ? 'left' : 'right';
+      earSideBtn.textContent = `👂 耳朵：${arState.earSide === 'right' ? '右耳 (換左耳)' : '左耳 (換右耳)'}`;
+    });
+  }
+
   // 綁定 AR 視窗內的穴位快速切換膠囊
   const chipContainer = document.getElementById('arPointChips');
   if (chipContainer) {
@@ -1293,7 +1665,9 @@ export function initArControls(onSelectPointInMainApp) {
         case 'face': return '😊';
         case 'leg': return '🦵';
         case 'back': return '🧘';
+        case 'torso': return '🫁';
         case 'foot': return '🦶';
+        case 'ear': return '👂';
         default: return '📍';
       }
     };
@@ -1315,6 +1689,9 @@ export function initArControls(onSelectPointInMainApp) {
         const prevMode = arState.mode;
         arState.targetPointId = pid;
         arState.mode = cfg.mode;
+        if (cfg.footSide) {
+          arState.footSide = cfg.footSide;
+        }
         updateArPointButtons();
 
         const hintEl = document.getElementById('arHintBanner');
@@ -1324,6 +1701,10 @@ export function initArControls(onSelectPointInMainApp) {
           footSideBtn.style.display = cfg.mode === 'foot' ? 'inline-block' : 'none';
           footSideBtn.textContent = `🦶 腳底：${arState.footSide === 'right' ? '右腳 (換左腳)' : '左腳 (換右腳)'}`;
         }
+        if (earSideBtn) {
+          earSideBtn.style.display = cfg.mode === 'ear' ? 'inline-block' : 'none';
+          earSideBtn.textContent = `👂 耳朵：${arState.earSide === 'right' ? '右耳 (換左耳)' : '左耳 (換右耳)'}`;
+        }
 
         if (onSelectPointInMainApp) {
           onSelectPointInMainApp(pid);
@@ -1331,7 +1712,7 @@ export function initArControls(onSelectPointInMainApp) {
 
         // 若模式切換，自動重新啟動相機與對應模型
         if (prevMode !== cfg.mode) {
-          arState.facingMode = cfg.mode === 'face' ? 'user' : 'environment';
+          arState.facingMode = cfg.mode === 'face' || cfg.mode === 'ear' ? 'user' : 'environment';
           await startArSession();
         }
       });

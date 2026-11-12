@@ -1802,4 +1802,60 @@ body {
   transform: translate(-50%, 0);
 }
 
+/* 🔬 1:1 特寫圖鏡像翻轉 */
+.closeup-svg-wrap.mirrored svg {
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+
+.flip-closeup-btn.active {
+  background: var(--herb-deep) !important;
+  color: #FFF !important;
+}
+
+/* 🔍 搜尋無結果提示條 */
+.search-no-result {
+  background: rgba(196, 137, 59, 0.12);
+  border: 1px dashed var(--amber-gold);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--ink-dark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.search-no-result .recommend-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.search-no-result .rec-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  color: var(--herb-deep);
+  cursor: pointer;
+}
+
+.undo-pain-btn {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  background: rgba(184, 61, 46, 0.1);
+  color: var(--cinnabar);
+  border: 1px solid rgba(184, 61, 46, 0.25);
+  cursor: pointer;
+}
+.undo-pain-btn:hover {
+  background: var(--cinnabar);
+  color: #FFF;
+}
+
 

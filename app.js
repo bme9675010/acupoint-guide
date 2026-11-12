@@ -14,7 +14,7 @@ import { requestWakeLock, releaseWakeLock, playSingingBowl, speakGuide, vibrate 
 import { getBaseBodySvgMarkup } from './modules/bodySvg.js';
 import { loadPersistedData, saveFavorites, savePainLogs, exportBackup, importBackup } from './modules/storage.js';
 import { showToast } from './modules/ui.js';
-import { readDeepLinkFromUrl, syncUrlWithState, shareAcupointLink } from './modules/deeplink.js';
+import { readDeepLinkFromUrl, syncUrlWithState, shareAcupointLink, sharePresetLink } from './modules/deeplink.js';
 import {
   initCanvasGestures,
   setCurrentViewBox,
@@ -156,11 +156,72 @@ function updateFavButtonUI(pointId) {
   favBtn.classList.toggle('active', isFav);
 }
 
+// 計算真實連續打卡天數（以使用者當地時區之日曆天為準）
+function calculateStreakDays(logs) {
+  if (!logs || logs.length === 0) return 0;
+  const daySet = new Set(
+    logs.map((log) => {
+      const d = new Date(log.timestamp);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const date = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${date}`;
+    })
+  );
+
+  const now = new Date();
+  const formatD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${date}`;
+  };
+
+  const todayStr = formatD(now);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = formatD(yesterday);
+
+  let currentCheck = new Date(now);
+  // 若今日尚未打卡，但昨日有打卡，從昨日往前回溯計算以保留 Streak
+  if (!daySet.has(todayStr)) {
+    if (daySet.has(yesterdayStr)) {
+      currentCheck = yesterday;
+    } else {
+      return 0;
+    }
+  }
+
+  let streak = 0;
+  while (true) {
+    const dateStr = formatD(currentCheck);
+    if (daySet.has(dateStr)) {
+      streak += 1;
+      currentCheck.setDate(currentCheck.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 // 渲染「按後痛感體質自我檢測紀錄」與打卡統計
 function updatePainLogAndConstitutionUI() {
   const countEl = document.getElementById('totalLogsCount');
   if (countEl) {
     countEl.textContent = String(state.painLogs.length);
+  }
+
+  const streakBadge = document.getElementById('streakBadge');
+  if (streakBadge) {
+    const streak = calculateStreakDays(state.painLogs);
+    streakBadge.textContent = streak > 0 ? `🔥 連續 ${streak} 天` : '🌱 今日尚未打卡';
+    streakBadge.title = `已連續打卡 ${streak} 天・累計 ${state.painLogs.length} 次手感紀錄`;
+  }
+
+  const undoBtn = document.getElementById('undoPainLogBtn');
+  if (undoBtn) {
+    undoBtn.style.display = state.painLogs.length > 0 ? 'inline-block' : 'none';
   }
 
   const pointLogs = state.painLogs.filter((item) => item.pointId === state.selectedPointId);
@@ -728,8 +789,10 @@ function toggleTimer() {
       playSingingBowl('press');
       vibrate('switchSide');
       speakGuide('時間過半，若單手按揉請換另一側');
+      state.timer.phase = 'press';
+      state.timer.phaseTimeLeft = pressSeconds;
       phaseEl.textContent = '🔄 請換另一側・深按';
-      secEl.textContent = `${state.timer.phaseTimeLeft}s`;
+      updateTimerUI(true);
       return;
     }
 
@@ -806,6 +869,7 @@ function renderPresetRow() {
         card.classList.remove('active');
         updatePlaylistBannerUI();
         renderBodyCanvas();
+        syncUrlWithState();
         return;
       }
 
@@ -820,6 +884,7 @@ function renderPresetRow() {
         state.highlightedIds = new Set(preset.points);
         selectAcupoint(preset.points[0], true);
         updatePlaylistBannerUI();
+        syncUrlWithState();
       }
     });
   });
@@ -965,11 +1030,16 @@ function applyColloquialSearch(rawQuery) {
   const clearBtn = document.getElementById('clearFilterBtn');
   if (clearBtn) clearBtn.style.display = 'inline-block';
 
-  const firstMatch = [...matchedSet][0];
-  if (firstMatch) {
-    selectAcupoint(firstMatch, true);
-  } else {
+  const noResultEl = document.getElementById('searchNoResultBanner');
+  if (matchedSet.size === 0) {
+    if (noResultEl) noResultEl.style.display = 'block';
     renderBodyCanvas();
+  } else {
+    if (noResultEl) noResultEl.style.display = 'none';
+    const firstMatch = [...matchedSet][0];
+    if (firstMatch) {
+      selectAcupoint(firstMatch, true);
+    }
   }
 }
 
@@ -978,6 +1048,9 @@ function applySymptomFilter(symptom) {
   state.activePresetId = null;
   state.playlist.isPlaying = false;
   updatePlaylistBannerUI();
+
+  const noResultEl = document.getElementById('searchNoResultBanner');
+  if (noResultEl) noResultEl.style.display = 'none';
 
   document.querySelectorAll('.preset-card').forEach((c) => c.classList.remove('active'));
   document.querySelectorAll('.symptom-chip[data-sym]').forEach((c) => {
@@ -1004,6 +1077,9 @@ function clearAllFilters() {
   state.playlist.isPlaying = false;
   state.highlightedIds.clear();
   updatePlaylistBannerUI();
+
+  const noResultEl = document.getElementById('searchNoResultBanner');
+  if (noResultEl) noResultEl.style.display = 'none';
 
   const searchInput = document.getElementById('symptomSearchInput');
   const clearSearchBtn = document.getElementById('clearSearchBtn');
@@ -1178,6 +1254,49 @@ function bindEvents() {
     if (pt) shareAcupointLink(pt);
   });
 
+  // 🔗 分享處方箋連結
+  document.getElementById('sharePlaylistBtn')?.addEventListener('click', () => {
+    const preset = getAllPresets().find((p) => p.id === state.activePresetId);
+    if (preset) {
+      sharePresetLink(preset);
+    } else {
+      showToast('請先由上方處方籤列選擇一組處方再分享');
+    }
+  });
+
+  // 🔄 1:1 微距特寫圖左右換側鏡像翻轉
+  const flipBtn = document.getElementById('flipCloseupBtn');
+  const closeupWrap = document.getElementById('closeupSvgContainer');
+  if (flipBtn && closeupWrap) {
+    flipBtn.addEventListener('click', () => {
+      const isMirrored = closeupWrap.classList.toggle('mirrored');
+      flipBtn.classList.toggle('active', isMirrored);
+      flipBtn.textContent = isMirrored ? '🔄 已鏡像翻轉（再按復原）' : '🔄 換側對照';
+    });
+  }
+
+  // ↩ 撤銷上一筆痛感紀錄
+  document.getElementById('undoPainLogBtn')?.addEventListener('click', () => {
+    if (state.painLogs.length === 0) return;
+    const removed = state.painLogs.pop();
+    savePainLogs();
+    updatePainLogAndConstitutionUI();
+    const pt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+    if (pt) renderDietaryTherapy(pt);
+    showToast(`↩ 已撤銷「${removed.pointName || removed.pointId}」上一筆手感紀錄`);
+  });
+
+  // 🔍 搜尋無結果時的推薦處方快捷按鈕
+  document.querySelectorAll('#searchNoResultBanner [data-quick-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const pid = btn.getAttribute('data-quick-preset');
+      const card = document.querySelector(`.preset-card[data-preset-id="${pid}"]`);
+      if (card) {
+        card.click();
+      }
+    });
+  });
+
   // 🌙 夜間護眼模式切換
   document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
     const nextMode = cycleThemeMode();
@@ -1269,12 +1388,19 @@ window.addEventListener('DOMContentLoaded', () => {
   initCanvasGestures();
   bindEvents();
 
-  const deep = readDeepLinkFromUrl(ACUPOINTS);
+  const deep = readDeepLinkFromUrl(ACUPOINTS, getAllPresets());
   if (deep.view) {
     state.currentView = deep.view;
     updateViewTabButtons();
   }
-  selectAcupoint(deep.pointId || 'LI4', !deep.view);
+  if (deep.presetId) {
+    const card = document.querySelector(`.preset-card[data-preset-id="${deep.presetId}"]`);
+    if (card) {
+      card.click();
+    }
+  } else {
+    selectAcupoint(deep.pointId || 'LI4', !deep.view);
+  }
 
   registerServiceWorkerWithUpdates(() => {
     showToast('✨ 本草尋穴已於背景更新至最新版本，重新整理即可生效', 4500);
