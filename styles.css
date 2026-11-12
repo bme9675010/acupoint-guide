@@ -1858,4 +1858,122 @@ body {
   color: #FFF;
 }
 
+/* =========================================================
+   📅 二十四節氣天人合一橫條與食療卡片
+   ========================================================= */
+.solar-term-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-ink);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+
+.solar-term-banner:hover {
+  border-color: var(--herb-mid);
+  transform: translateY(-1px);
+}
+
+.solar-term-badge {
+  background: linear-gradient(135deg, #A85A32 0%, #C4893B 100%);
+  color: #FAF7F0;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: var(--font-serif);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.solar-term-text {
+  color: var(--ink-dark);
+  font-weight: 500;
+}
+
+.diet-solar-card {
+  background: rgba(196, 137, 59, 0.08);
+  border: 1px solid rgba(196, 137, 59, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-top: 10px;
+}
+
+/* =========================================================
+   🎙️ 免手碰語音控制與鍵盤快捷鍵指示
+   ========================================================= */
+.voice-pill-btn {
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.voice-pill-btn.listening,
+.timer-voice-btn.listening {
+  background: var(--cinnabar) !important;
+  color: #FFF !important;
+  border-color: var(--cinnabar) !important;
+  box-shadow: 0 0 0 0 rgba(184, 61, 46, 0.7);
+  animation: voicePulse 1.6s infinite ease-out;
+}
+
+@keyframes voicePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(184, 61, 46, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(184, 61, 46, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(184, 61, 46, 0);
+  }
+}
+
+.handsfree-hints {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-soft);
+  flex-wrap: wrap;
+}
+
+.timer-voice-btn {
+  font-size: 0.76rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-ink);
+  background: var(--bg-card);
+  color: var(--ink-dark);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.timer-voice-btn:hover {
+  border-color: var(--herb-deep);
+  color: var(--herb-deep);
+}
+
+.keyboard-hint-pill {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 3px 8px;
+  border-radius: 6px;
+  user-select: none;
+}
+
+[data-theme="dark"] .keyboard-hint-pill {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink-muted);
+}
+
+
 

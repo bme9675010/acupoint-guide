@@ -37,6 +37,10 @@
         <span>🤰 孕期安全鎖</span>
       </label>
 
+      <button type="button" id="voiceControlBtn" class="util-pill-btn voice-pill-btn" title="開啟免手碰語音口令控制（推拿塗乳液免碰螢幕，支援說「開始/暫停/下一穴/換邊」）">
+        🎙️ 語音
+      </button>
+
       <button type="button" id="themeToggleBtn" class="util-pill-btn" title="切換日間宣紙／夜間護眼／跟隨系統深色模式">
         ☀️ 日間(自動)
       </button>
@@ -56,6 +60,11 @@
       <div id="ziwuBanner" class="ziwu-banner" title="點擊篩選當令經絡推薦穴位">
         <span id="ziwuBadge" class="ziwu-badge">時辰載入中</span>
         <span id="ziwuText" class="ziwu-text">正在推算當下子午流注經絡…</span>
+      </div>
+
+      <div id="solarTermBanner" class="solar-term-banner" title="點擊切換當令二十四節氣推薦養生穴位">
+        <span id="solarTermBadge" class="solar-term-badge">節氣載入中</span>
+        <span id="solarTermText" class="solar-term-text">正在推算當令節氣…</span>
       </div>
     </div>
   </header>
@@ -265,6 +274,13 @@
             <button type="button" id="startTimerBtn" class="btn-primary-timer">開始跟練按揉</button>
             <button type="button" id="resetTimerBtn" class="btn-secondary-timer">重置</button>
           </div>
+
+          <div class="handsfree-hints">
+            <button type="button" id="timerVoiceBtn" class="timer-voice-btn" title="免手碰語音口令（塗乳液精油免碰螢幕，可說「開始/暫停/下一穴/換邊」）">
+              🎙️ 免手碰語音
+            </button>
+            <span class="keyboard-hint-pill" title="鍵盤快捷鍵：空白鍵[開始/暫停]、→[下一穴]、←[上一穴]、F[換側對照]、V[語音]、M[換側]">⌨️ 空白鍵：開始/暫停 ｜ →：下一穴 ｜ F：翻轉微距</span>
+          </div>
         </div>
 
         <!-- 🩺 按後痛感體質自我檢測紀錄 -->
@@ -352,6 +368,21 @@
           <p id="dietZiwuDrink" style="font-size: 0.85rem; color: var(--herb-deep); font-weight: 600; margin-bottom: 4px;"></p>
           <p id="dietZiwuCvs" style="font-size: 0.82rem; color: var(--ink-dark); margin-bottom: 4px;"></p>
           <p id="dietZiwuAvoid" style="font-size: 0.8rem; color: var(--cinnabar);"></p>
+        </div>
+
+        <!-- 6. 📅 當令二十四節氣養生食療 -->
+        <div class="info-section diet-solar-card">
+          <div class="diet-card-header">
+            <span id="dietSolarBadge" class="diet-badge">📅 當令節氣</span>
+            <h4 id="dietSolarTitle" class="diet-tea-title">--</h4>
+          </div>
+          <p id="dietSolarEssence" style="font-size: 0.82rem; color: var(--ink-dark); margin: 6px 0; line-height: 1.5;"></p>
+          <p id="dietSolarDrink" style="font-size: 0.85rem; color: var(--herb-deep); font-weight: 600; margin-bottom: 4px;"></p>
+          <p id="dietSolarCvs" style="font-size: 0.82rem; color: var(--ink-muted); margin-bottom: 4px;"></p>
+          <p id="dietSolarAvoid" style="font-size: 0.8rem; color: var(--cinnabar);"></p>
+          <button type="button" id="solarTermJumpBtn" class="pairing-Jump-btn" style="margin-top:8px;">
+            🌿 一鍵標記當令節氣推薦穴位 →
+          </button>
         </div>
       </div>
     </aside>

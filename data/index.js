@@ -21,11 +21,12 @@ import {
 import { getCloseupSvgMarkup as getBaseCloseupSvg } from './closeupDiagrams.js';
 import { getEarCloseupSvgMarkup } from './earDiagrams.js';
 import { getChildCloseupSvgMarkup } from './childDiagrams.js';
+import { SOLAR_TERMS, getCurrentSolarTerm } from './solarTerms.js';
 
 export const ACUPOINTS = [...BASE_ACUPOINTS, ...EAR_POINTS, ...CHILD_POINTS];
 export const SYMPTOM_PRESETS = [...BASE_PRESETS, EAR_PRESET, ...CHILD_PRESETS];
 export const DIETARY_THERAPY = { ...BASE_DIET, ...EAR_DIETARY_THERAPY, ...CHILD_DIETARY_THERAPY };
-export { ZIWU_LIUZHU, ZIWU_DIET, EAR_SYNONYMS, CHILD_SYNONYMS };
+export { ZIWU_LIUZHU, ZIWU_DIET, EAR_SYNONYMS, CHILD_SYNONYMS, SOLAR_TERMS, getCurrentSolarTerm };
 
 export function getCloseupSvgMarkup(pointId) {
   if (pointId && pointId.startsWith('EAR-')) {

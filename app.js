@@ -6,6 +6,7 @@ import {
   ZIWU_DIET,
   EAR_SYNONYMS,
   CHILD_SYNONYMS,
+  getCurrentSolarTerm,
   getCloseupSvgMarkup
 } from './data/index.js';
 import { AR_SUPPORTED_POINTS, openArModal, initArControls } from './arFinder.js';
@@ -28,6 +29,7 @@ import { buildMeridianHeatmapHtml } from './modules/heatmap.js';
 import { renderPresetEditorModal } from './modules/presetEditor.js';
 import { POSTURE_SCENARIOS } from './modules/posture.js';
 import { getArPackStatus, preloadArPack, registerServiceWorkerWithUpdates } from './modules/offline.js';
+import { initVoiceAndKeyboardControls, toggleVoiceControl } from './modules/voiceControl.js';
 
 // 渲染人體 SVG 與穴位點
 function renderBodyCanvas() {
@@ -356,6 +358,34 @@ function renderDietaryTherapy(point) {
     if (zDrink) zDrink.textContent = `🍵 當令宜飲：${ziwuDiet.drink}`;
     if (zCvs) zCvs.textContent = `🏪 超商可買：${ziwuDiet.cvs}`;
     if (zAvoid) zAvoid.textContent = `⚠️ 時辰忌口：${ziwuDiet.avoid}`;
+  }
+
+  // 更新當令二十四節氣養生食療
+  const termData = getCurrentSolarTerm();
+  if (termData && termData.current) {
+    const term = termData.current;
+    const sBadge = document.getElementById('dietSolarBadge');
+    const sTitle = document.getElementById('dietSolarTitle');
+    const sEssence = document.getElementById('dietSolarEssence');
+    const sDrink = document.getElementById('dietSolarDrink');
+    const sCvs = document.getElementById('dietSolarCvs');
+    const sAvoid = document.getElementById('dietSolarAvoid');
+
+    if (sBadge) sBadge.textContent = `📅 當令節氣・${term.season}`;
+    if (sTitle) sTitle.textContent = `【${term.name}】${term.slogan}・本草養生`;
+    if (sEssence) sEssence.textContent = term.essence;
+    if (sDrink) sDrink.textContent = `🫖 節氣專屬：${term.tea.name}（${term.tea.recipe}・${term.tea.effect}）`;
+    if (sCvs) sCvs.textContent = `🏪 超商替代：${term.tea.cvsOption}`;
+    if (sAvoid) sAvoid.textContent = `🚫 節氣忌口：${term.tea.avoid}`;
+
+    const jumpBtn = document.getElementById('solarTermJumpBtn');
+    if (jumpBtn) {
+      const recNames = term.recommendedPointIds
+        .map((id) => ACUPOINTS.find((p) => p.id === id)?.name)
+        .filter(Boolean)
+        .join('、');
+      jumpBtn.textContent = `🌿 一鍵標記當令【${term.name}】推薦穴位（${recNames}）→`;
+    }
   }
 }
 
@@ -1126,6 +1156,144 @@ function initZiwuLiuzhu() {
   });
 }
 
+// 初始化當令二十四節氣提示與養生穴位推薦
+function initSolarTerms() {
+  const termData = getCurrentSolarTerm();
+  if (!termData || !termData.current) return;
+
+  const currentTerm = termData.current;
+  const badge = document.getElementById('solarTermBadge');
+  const text = document.getElementById('solarTermText');
+  const banner = document.getElementById('solarTermBanner');
+
+  const recNames = currentTerm.recommendedPointIds
+    .map((id) => ACUPOINTS.find((p) => p.id === id)?.name)
+    .filter(Boolean)
+    .join('、');
+
+  if (badge) badge.textContent = `${currentTerm.name}・${currentTerm.season}`;
+  if (text) text.textContent = `${currentTerm.slogan}｜宜按：${recNames}｜🍵 ${currentTerm.tea.name.split('（')[0]}`;
+
+  const triggerTermHighlight = () => {
+    state.activePresetId = null;
+    state.activeSymptomTag = null;
+    state.activePosture = null;
+    state.playlist.isPlaying = false;
+    updatePlaylistBannerUI();
+    document.querySelectorAll('.preset-card, .symptom-chip').forEach((el) => el.classList.remove('active'));
+    state.highlightedIds = new Set(currentTerm.recommendedPointIds);
+    selectAcupoint(currentTerm.recommendedPointIds[0], true);
+    showToast(`📅 已標記當令【${currentTerm.name}】養生穴位：${recNames}`);
+  };
+
+  banner?.addEventListener('click', triggerTermHighlight);
+  document.getElementById('solarTermJumpBtn')?.addEventListener('click', triggerTermHighlight);
+}
+
+// 免手碰語音口令與鍵盤快捷鍵調度處理中心
+function handleVoiceOrKeyboardAction(action, detail = {}) {
+  const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+
+  switch (action) {
+    case 'toggleTimer':
+      toggleTimer();
+      break;
+
+    case 'start':
+      if (!state.timer.isRunning) {
+        toggleTimer();
+      }
+      break;
+
+    case 'pause':
+      if (state.timer.isRunning) {
+        toggleTimer();
+      }
+      break;
+
+    case 'next': {
+      if (state.activePresetId) {
+        const preset = getAllPresets().find((p) => p.id === state.activePresetId);
+        if (preset && preset.points.length > 0) {
+          const curIdx = preset.points.indexOf(state.selectedPointId);
+          const nextIdx = (curIdx + 1) % preset.points.length;
+          selectAcupoint(preset.points[nextIdx], true);
+          return;
+        }
+      }
+      if (state.highlightedIds.size > 0) {
+        const list = [...state.highlightedIds];
+        const curIdx = list.indexOf(state.selectedPointId);
+        const nextIdx = (curIdx + 1) % list.length;
+        selectAcupoint(list[nextIdx], true);
+        return;
+      }
+      const allIds = ACUPOINTS.map((p) => p.id);
+      const curIdx = allIds.indexOf(state.selectedPointId);
+      const nextIdx = (curIdx + 1) % allIds.length;
+      selectAcupoint(allIds[nextIdx], true);
+      break;
+    }
+
+    case 'prev': {
+      if (state.activePresetId) {
+        const preset = getAllPresets().find((p) => p.id === state.activePresetId);
+        if (preset && preset.points.length > 0) {
+          const curIdx = preset.points.indexOf(state.selectedPointId);
+          const prevIdx = (curIdx - 1 + preset.points.length) % preset.points.length;
+          selectAcupoint(preset.points[prevIdx], true);
+          return;
+        }
+      }
+      if (state.highlightedIds.size > 0) {
+        const list = [...state.highlightedIds];
+        const curIdx = list.indexOf(state.selectedPointId);
+        const prevIdx = (curIdx - 1 + list.length) % list.length;
+        selectAcupoint(list[prevIdx], true);
+        return;
+      }
+      const allIds = ACUPOINTS.map((p) => p.id);
+      const curIdx = allIds.indexOf(state.selectedPointId);
+      const prevIdx = (curIdx - 1 + allIds.length) % allIds.length;
+      selectAcupoint(allIds[prevIdx], true);
+      break;
+    }
+
+    case 'switchSide': {
+      if (currentPt && currentPt.massageGuide.rhythm.bilateral) {
+        playSingingBowl('press');
+        vibrate('switchSide');
+        speakGuide('換另一側按揉，請深按');
+        state.timer.phase = 'press';
+        state.timer.phaseTimeLeft = currentPt.massageGuide.rhythm.pressSeconds;
+        const phaseEl = document.getElementById('orbPhase');
+        if (phaseEl) phaseEl.textContent = '🔄 請換另一側・深按';
+        updateTimerUI(true);
+      } else {
+        showToast('本穴位為人體正中單穴或無需特別換側');
+      }
+      break;
+    }
+
+    case 'flipCloseup': {
+      const flipBtn = document.getElementById('flipCloseupBtn');
+      if (flipBtn) flipBtn.click();
+      break;
+    }
+
+    case 'capture': {
+      const freezeBtn = document.getElementById('freezeArBtn');
+      if (freezeBtn) freezeBtn.click();
+      break;
+    }
+
+    case 'openAr': {
+      openArModal(state.selectedPointId);
+      break;
+    }
+  }
+}
+
 function updateViewTabButtons() {
   document.querySelectorAll('.view-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.getAttribute('data-view') === state.currentView);
@@ -1264,6 +1432,10 @@ function bindEvents() {
     }
   });
 
+  // 🎙️ 免手碰語音口令控制開關
+  document.getElementById('voiceControlBtn')?.addEventListener('click', toggleVoiceControl);
+  document.getElementById('timerVoiceBtn')?.addEventListener('click', toggleVoiceControl);
+
   // 🔄 1:1 微距特寫圖左右換側鏡像翻轉
   const flipBtn = document.getElementById('flipCloseupBtn');
   const closeupWrap = document.getElementById('closeupSvgContainer');
@@ -1384,9 +1556,11 @@ window.addEventListener('DOMContentLoaded', () => {
   initThemeListener();
   startReminderScheduler();
   initZiwuLiuzhu();
+  initSolarTerms();
   initFilters();
   initCanvasGestures();
   bindEvents();
+  initVoiceAndKeyboardControls({ onAction: handleVoiceOrKeyboardAction });
 
   const deep = readDeepLinkFromUrl(ACUPOINTS, getAllPresets());
   if (deep.view) {

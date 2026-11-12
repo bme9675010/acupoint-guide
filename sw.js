@@ -1,4 +1,4 @@
-const CACHE_NAME = 'acupoint-guide-v10';
+const CACHE_NAME = 'acupoint-guide-v11';
 const AR_CACHE = 'acupoint-ar-v1'; // AR 模型離線包（約 20MB），不隨版本升級清除
 const KEEP_CACHES = [CACHE_NAME, AR_CACHE];
 
@@ -14,6 +14,7 @@ const ASSETS = [
   './data/acupoints.js',
   './data/earPoints.js',
   './data/childPoints.js',
+  './data/solarTerms.js',
   './data/closeupDiagrams.js',
   './data/earDiagrams.js',
   './data/childDiagrams.js',
@@ -29,7 +30,8 @@ const ASSETS = [
   './modules/heatmap.js',
   './modules/presetEditor.js',
   './modules/posture.js',
-  './modules/offline.js'
+  './modules/offline.js',
+  './modules/voiceControl.js'
 ];
 
 self.addEventListener('install', (event) => {
