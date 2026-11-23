@@ -1,6 +1,6 @@
 // 🎙️ 免手觸控控制中心（Web Speech API 語音口令識別 + 鍵盤人體工學快捷鍵）
 import { showToast } from './ui.js';
-import { vibrate, playSingingBowl } from './audio.js';
+import { vibrate } from './audio.js';
 
 let recognition = null;
 let isVoiceActive = false;
@@ -16,7 +16,8 @@ const COMMAND_PATTERNS = [
   { action: 'switchSide', keywords: ['換邊', '換手', '換側', '另一側', '另一手', '另一腳'] },
   { action: 'flipCloseup', keywords: ['翻轉', '換側對照', '鏡像', '反面', '轉向'] },
   { action: 'capture', keywords: ['定格', '拍照', '截圖', '確認位置'] },
-  { action: 'openAr', keywords: ['打開鏡頭', '開啟鏡頭', '開啟ar', '打開ar', '相機找穴'] }
+  { action: 'openAr', keywords: ['打開鏡頭', '開啟鏡頭', '開啟ar', '打開ar', '相機找穴'] },
+  { action: 'closeModal', keywords: ['關閉視窗', '離開鏡頭', '關閉鏡頭'] }
 ];
 
 export function isVoiceSupported() {
@@ -79,7 +80,6 @@ export function initVoiceAndKeyboardControls({ onAction }) {
 
       recognition.onend = () => {
         if (shouldRestart) {
-          // 沉默自動中斷時，背景自動續聽
           setTimeout(() => {
             if (shouldRestart) {
               try {
@@ -99,8 +99,18 @@ export function initVoiceAndKeyboardControls({ onAction }) {
 
   // 2. 初始化全域鍵盤快捷鍵（方便雙手推拿或放在桌面時一鍵操作）
   window.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape') {
+      if (dispatchAction) dispatchAction('closeModal', { source: 'keyboard' });
+      return;
+    }
+
     const activeEl = document.activeElement;
-    const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+    const isTyping =
+      activeEl &&
+      (activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable);
     if (isTyping) return;
 
     if (e.code === 'Space') {

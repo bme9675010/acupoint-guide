@@ -1,13 +1,15 @@
-// 🔗 Deep Link 網址同步 (?p=LI4&v=hand&preset=office) 與一鍵分享給親友
+// 🔗 Deep Link 網址同步 (?p=LI4&v=hand&preset=office-neck 或 ?preset=shared&pts=LI4,PC6&title=...)
 import { state } from './state.js';
 import { showToast } from './ui.js';
 
-export function readDeepLinkFromUrl(allPoints, allPresets = []) {
+export function readDeepLinkFromUrl(allPoints) {
   try {
     const params = new URLSearchParams(window.location.search);
     const pointId = params.get('p');
     const view = params.get('v');
     const presetId = params.get('preset');
+    const ptsParam = params.get('pts');
+    const titleParam = params.get('title');
     const validViews = new Set(['front', 'back', 'head', 'hand', 'foot', 'sole', 'ear', 'child']);
 
     let targetPoint = null;
@@ -15,19 +17,46 @@ export function readDeepLinkFromUrl(allPoints, allPresets = []) {
       targetPoint = allPoints.find((pt) => pt.id.toUpperCase() === pointId.toUpperCase());
     }
     const targetView = view && validViews.has(view) ? view : null;
-    const targetPreset = presetId || null;
+
+    // 支援親友分享的自訂／收藏處方 (?preset=shared&pts=LI4,PC6,KI1&title=...)
+    let sharedPreset = null;
+    if (ptsParam) {
+      const idMap = new Map(allPoints.map((pt) => [pt.id.toUpperCase(), pt.id]));
+      const validIds = ptsParam
+        .split(',')
+        .map((s) => idMap.get(s.trim().toUpperCase()))
+        .filter(Boolean);
+      const uniqueIds = [...new Set(validIds)];
+      if (uniqueIds.length > 0) {
+        const cleanTitle = (titleParam || '親友分享處方').slice(0, 24);
+        const names = uniqueIds
+          .map((id) => allPoints.find((p) => p.id === id)?.name)
+          .filter(Boolean)
+          .slice(0, 3)
+          .join('＋');
+        sharedPreset = {
+          id: 'shared_link',
+          title: cleanTitle,
+          subtitle: `${names}${uniqueIds.length > 3 ? ` 等 ${uniqueIds.length} 穴` : ''}`,
+          icon: '💌',
+          points: uniqueIds,
+          isShared: true
+        };
+      }
+    }
 
     return {
       pointId: targetPoint ? targetPoint.id : null,
       view: targetView,
-      presetId: targetPreset
+      presetId: presetId || null,
+      sharedPreset
     };
   } catch (_) {
-    return { pointId: null, view: null, presetId: null };
+    return { pointId: null, view: null, presetId: null, sharedPreset: null };
   }
 }
 
-export function syncUrlWithState() {
+export function syncUrlWithState(activePresetObj = null) {
   try {
     const url = new URL(window.location.href);
     if (state.selectedPointId) {
@@ -37,11 +66,30 @@ export function syncUrlWithState() {
       url.searchParams.set('v', state.currentView);
     }
     if (state.activePresetId) {
-      url.searchParams.set('preset', state.activePresetId);
+      const isPortableCustom =
+        state.activePresetId === 'fav_custom' ||
+        state.activePresetId.startsWith('custom_') ||
+        state.activePresetId === 'shared_link' ||
+        state.activePresetId === 'wizard_temp';
+      if (isPortableCustom && activePresetObj?.points?.length) {
+        url.searchParams.set('preset', 'shared');
+        url.searchParams.set('pts', activePresetObj.points.join(','));
+        url.searchParams.set('title', activePresetObj.title || '自訂處方');
+      } else if (!isPortableCustom) {
+        url.searchParams.set('preset', state.activePresetId);
+        url.searchParams.delete('pts');
+        url.searchParams.delete('title');
+      }
     } else {
       url.searchParams.delete('preset');
+      url.searchParams.delete('pts');
+      url.searchParams.delete('title');
     }
-    window.history.replaceState({ p: state.selectedPointId, v: state.currentView, preset: state.activePresetId }, '', url);
+    window.history.replaceState(
+      { p: state.selectedPointId, v: state.currentView, preset: state.activePresetId },
+      '',
+      url
+    );
   } catch (_) {}
 }
 
@@ -50,9 +98,9 @@ export async function shareAcupointLink(point) {
   const shareUrl = new URL(window.location.href);
   shareUrl.searchParams.set('p', point.id);
   shareUrl.searchParams.set('v', state.currentView);
-  if (state.activePresetId) {
-    shareUrl.searchParams.set('preset', state.activePresetId);
-  }
+  shareUrl.searchParams.delete('preset');
+  shareUrl.searchParams.delete('pts');
+  shareUrl.searchParams.delete('title');
 
   const shareTitle = `本草尋穴｜${point.name} (${point.id}) 按摩定位與食療`;
   const shareText = `📍【${point.name} (${point.id})】${point.location.quickFind}\n🎯 改善：${point.benefits.symptoms.join('、')}`;
@@ -78,14 +126,34 @@ export async function shareAcupointLink(point) {
   }
 }
 
-export async function sharePresetLink(preset) {
-  if (!preset) return;
+export async function sharePresetLink(preset, allPoints = []) {
+  if (!preset || !preset.points?.length) return;
   const shareUrl = new URL(window.location.href);
   shareUrl.searchParams.delete('p');
-  shareUrl.searchParams.set('preset', preset.id);
+  shareUrl.searchParams.delete('v');
+
+  const isCustomOrLocal =
+    preset.id === 'fav_custom' ||
+    preset.id.startsWith('custom_') ||
+    preset.id === 'shared_link' ||
+    preset.id === 'wizard_temp';
+
+  if (isCustomOrLocal) {
+    shareUrl.searchParams.set('preset', 'shared');
+    shareUrl.searchParams.set('pts', preset.points.join(','));
+    shareUrl.searchParams.set('title', preset.title);
+  } else {
+    shareUrl.searchParams.set('preset', preset.id);
+    shareUrl.searchParams.delete('pts');
+    shareUrl.searchParams.delete('title');
+  }
+
+  const pointNames = preset.points
+    .map((id) => allPoints.find((p) => p.id === id)?.name || id)
+    .join(' → ');
 
   const shareTitle = `本草尋穴｜${preset.icon} 【${preset.title}】養生穴位處方`;
-  const shareText = `🌿 推薦您這套養生對證處方：${preset.subtitle}\n📍 包含穴位：${preset.points.join(' → ')}`;
+  const shareText = `🌿 推薦您這套養生對證處方：${preset.subtitle}\n📍 包含穴位：${pointNames}`;
 
   if (navigator.share) {
     try {
@@ -102,7 +170,7 @@ export async function sharePresetLink(preset) {
 
   try {
     await navigator.clipboard.writeText(`${shareTitle}\n${shareText}\n👉 ${shareUrl.toString()}`);
-    showToast(`📋 已複製【${preset.title}】處方專屬連結！可直接傳給親友`);
+    showToast(`📋 已複製【${preset.title}】處方專屬連結！親友點開即可直接跟練`);
   } catch (_) {
     showToast(`🔗 分享網址：${shareUrl.toString()}`);
   }

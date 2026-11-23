@@ -854,20 +854,29 @@ function drawGuidedFootOverlay(ctx, W, H, targetPointId, pulse, footSide = 'righ
 
   ctx.restore();
 
-  // 3. 繪製中文標題與導引說明
+  // 3. 繪製中文標題與導引說明（前鏡頭 CSS 鏡像時自動翻正文字）
+  const isMirroredCanvas = arState.facingMode === 'user';
+  const drawUprightCenterText = (txt, x, y) => {
+    ctx.save();
+    ctx.translate(x, y);
+    if (isMirroredCanvas) ctx.scale(-1, 1);
+    ctx.fillText(txt, 0, 0);
+    ctx.restore();
+  };
+
   ctx.font = 'bold 15px "PingFang TC", "Microsoft JhengHei", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#F4C476';
   ctx.shadowColor = 'rgba(0,0,0,0.85)';
   ctx.shadowBlur = 6;
-  ctx.fillText(
+  drawUprightCenterText(
     `🦶 足底全息投影【${isRight ? '右腳 (外側主肝膽)' : '左腳 (外側主心脾)'}】`,
     cx,
     top - 18
   );
   ctx.font = '12px "PingFang TC", "Microsoft JhengHei", sans-serif';
   ctx.fillStyle = 'rgba(250, 247, 240, 0.95)';
-  ctx.fillText(
+  drawUprightCenterText(
     '將腳底放進金色虛線框中，點右上角「❄️ 定格」即可鎖定投影精準按穴！',
     cx,
     bottom + 22
@@ -888,6 +897,7 @@ function drawGuidedEarOverlay(ctx, W, H, targetPointId, pulse, earSide = 'right'
   const top = cy - earH * 0.5;
   const bottom = cy + earH * 0.5;
   const isRight = earSide === 'right';
+  const isMirroredCanvas = arState.facingMode === 'user';
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -951,39 +961,44 @@ function drawGuidedEarOverlay(ctx, W, H, targetPointId, pulse, earSide = 'right'
     ctx.lineWidth = isTarget ? 2.5 : 1.5;
     ctx.stroke();
 
-    // 標籤文字
+    // 標籤文字（同時考量左耳內翻與前鏡頭 CSS 鏡像，確保永遠正字）
     if (isTarget) {
       ctx.save();
-      if (!isRight) ctx.scale(-1, 1);
-      ctx.font = 'bold 13px sans-serif';
+      ctx.translate(ep.x, ep.y);
+      const netFlip = (!isRight ? -1 : 1) * (isMirroredCanvas ? -1 : 1);
+      if (netFlip < 0) ctx.scale(-1, 1);
+      ctx.font = 'bold 13px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      const tw = ctx.measureText(ep.name).width;
+      ctx.fillStyle = 'rgba(184, 61, 46, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(14, -12, tw + 14, 22, 6);
+      ctx.fill();
       ctx.fillStyle = '#FFF';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur = 4;
-      ctx.fillText(ep.name, ep.x * (isRight ? 1 : -1) + 16, ep.y + 4);
+      ctx.fillText(ep.name, 21, 4);
       ctx.restore();
     }
   });
 
   ctx.restore();
 
-  // 4. 中文標題與說明
+  // 4. 中文標題與說明（前鏡頭自動翻正）
+  const drawEarTitle = (txt, x, y) => {
+    ctx.save();
+    ctx.translate(x, y);
+    if (isMirroredCanvas) ctx.scale(-1, 1);
+    ctx.fillText(txt, 0, 0);
+    ctx.restore();
+  };
+
   ctx.font = 'bold 15px "PingFang TC", "Microsoft JhengHei", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#F4C476';
   ctx.shadowColor = 'rgba(0,0,0,0.85)';
   ctx.shadowBlur = 6;
-  ctx.fillText(
-    `👂 耳穴全息引導【${isRight ? '右耳' : '左耳'}】`,
-    cx,
-    top - 18
-  );
+  drawEarTitle(`👂 耳穴全息引導【${isRight ? '右耳' : '左耳'}】`, cx, top - 18);
   ctx.font = '12px "PingFang TC", "Microsoft JhengHei", sans-serif';
   ctx.fillStyle = 'rgba(250, 247, 240, 0.95)';
-  ctx.fillText(
-    '將耳朵放進金色虛線框中，點右上角「❄️ 定格」即可對照鏡子精準貼按！',
-    cx,
-    bottom + 22
-  );
+  drawEarTitle('將耳朵放進金色虛線框中，點右上角「❄️ 定格」即可對照鏡子精準貼按！', cx, bottom + 22);
   ctx.shadowBlur = 0;
 
   ctx.restore();
@@ -1007,6 +1022,12 @@ function drawAcupointMarker(ctx, x, y, label, isPrimary, pulseScale = 1) {
   ctx.lineWidth = 2.2;
   ctx.strokeStyle = '#FFF9F0';
   ctx.stroke();
+
+  // 雙側對稱第二點沒有文字時不繪製空方框
+  if (!label) {
+    ctx.restore();
+    return;
+  }
 
   // 標籤文字（若鏡頭是前鏡頭自拍鏡像，文字需反轉回來才不會左右顛倒）
   const isMirrored = arState.facingMode === 'user';
@@ -1055,7 +1076,7 @@ export async function openArModal(initialPointId = 'LI4') {
   arState.isOpen = true;
 
   modal.classList.add('open');
-  updateArPointButtons();
+  updateArPointButtons(true);
   hintEl.textContent = pointConfig.hint;
 
   if (footSideBtn) {
@@ -1604,6 +1625,10 @@ function stopCameraStream() {
   }
 }
 
+export function isArModalOpen() {
+  return !!arState.isOpen;
+}
+
 export function closeArModal() {
   arState.isOpen = false;
   arState.isFrozen = false;
@@ -1617,20 +1642,117 @@ export function closeArModal() {
   document.getElementById('arModal')?.classList.remove('open');
 }
 
-function updateArPointButtons() {
+// 💾 合成當前鏡頭畫面 + AR 標記覆蓋層並輸出為 PNG（支援手機分享或直接下載）
+async function saveArSnapshot() {
+  const video = document.getElementById('arVideo');
+  const canvas = document.getElementById('arCanvas');
+  const statusEl = document.getElementById('arStatusText');
+  if (!video || !canvas || video.readyState < 2) {
+    if (statusEl) statusEl.textContent = '⚠️ 相機畫面尚未就緒，請稍候再儲存';
+    return;
+  }
+
+  const W = canvas.width || video.videoWidth || 640;
+  const H = canvas.height || video.videoHeight || 480;
+  const out = document.createElement('canvas');
+  out.width = W;
+  out.height = H;
+  const octx = out.getContext('2d');
+
+  const isMirrored = arState.facingMode === 'user';
+  octx.save();
+  if (isMirrored) {
+    octx.translate(W, 0);
+    octx.scale(-1, 1);
+  }
+  octx.drawImage(video, 0, 0, W, H);
+  octx.drawImage(canvas, 0, 0, W, H);
+  octx.restore();
+
+  // 右下角壓上輕量本草尋穴定位浮水印
+  const ptCfg = AR_SUPPORTED_POINTS[arState.targetPointId];
+  const stamp = `本草尋穴 AR｜${ptCfg ? `${ptCfg.name} (${arState.targetPointId})` : arState.targetPointId}`;
+  octx.save();
+  octx.font = 'bold 14px "PingFang TC", "Microsoft JhengHei", sans-serif';
+  const tw = octx.measureText(stamp).width;
+  octx.fillStyle = 'rgba(20, 32, 26, 0.72)';
+  octx.beginPath();
+  octx.roundRect(W - tw - 28, H - 36, tw + 18, 26, 6);
+  octx.fill();
+  octx.fillStyle = '#FAF7F0';
+  octx.fillText(stamp, W - tw - 19, H - 18);
+  octx.restore();
+
+  const filename = `本草尋穴-AR-${ptCfg ? ptCfg.name : arState.targetPointId}.png`;
+  const blob = await new Promise((resolve) => out.toBlob(resolve, 'image/png'));
+  if (!blob) return;
+
+  const file = new File([blob], filename, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: stamp });
+      if (statusEl) statusEl.textContent = '💾 已開啟系統分享／儲存定格定位圖';
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2500);
+  if (statusEl) statusEl.textContent = `💾 已下載 AR 定位照（${filename}）`;
+}
+
+const AR_MODE_TABS = [
+  { mode: 'hand', label: '✋ 手部' },
+  { mode: 'face', label: '😊 臉部' },
+  { mode: 'leg', label: '🦵 下肢' },
+  { mode: 'back', label: '🧘 背肩' },
+  { mode: 'torso', label: '🫁 胸腹' },
+  { mode: 'foot', label: '🦶 足底' },
+  { mode: 'ear', label: '👂 耳穴' }
+];
+
+let activeChipFilterMode = 'hand';
+
+function updateArPointButtons(syncFilterToCurrentMode = false) {
+  if (syncFilterToCurrentMode) {
+    activeChipFilterMode = arState.mode;
+  }
+
+  document.querySelectorAll('.ar-mode-tab').forEach((tab) => {
+    tab.classList.toggle('active', tab.getAttribute('data-ar-mode') === activeChipFilterMode);
+  });
+
+  let activeEl = null;
   document.querySelectorAll('.ar-point-chip').forEach((btn) => {
     const pid = btn.getAttribute('data-ar-point');
-    btn.classList.toggle('active', pid === arState.targetPointId);
+    const mode = btn.getAttribute('data-ar-mode');
+    const isActive = pid === arState.targetPointId;
+    btn.classList.toggle('active', isActive);
+    btn.style.display = mode === activeChipFilterMode ? 'inline-flex' : 'none';
+    if (isActive && mode === activeChipFilterMode) activeEl = btn;
   });
+
+  if (activeEl) {
+    activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
 }
 
 export function initArControls(onSelectPointInMainApp) {
   // 綁定關閉按鈕
   document.getElementById('closeArModalBtn')?.addEventListener('click', closeArModal);
 
-  // 綁定定格與 3 秒倒數定格按鈕
+  // 綁定定格、3 秒倒數定格與保存定格照按鈕
   document.getElementById('freezeArBtn')?.addEventListener('click', toggleFreezeFrame);
   document.getElementById('countdownFreezeBtn')?.addEventListener('click', startCountdownFreeze);
+  document.getElementById('saveArSnapBtn')?.addEventListener('click', saveArSnapshot);
 
   // 綁定前後鏡頭切換按鈕
   document.getElementById('flipCameraBtn')?.addEventListener('click', async () => {
@@ -1656,6 +1778,21 @@ export function initArControls(onSelectPointInMainApp) {
     });
   }
 
+  // 綁定 AR 底部 7 部位分類頁籤
+  const modeTabsEl = document.getElementById('arModeTabs');
+  if (modeTabsEl) {
+    modeTabsEl.innerHTML = AR_MODE_TABS.map(
+      (t) => `<button type="button" class="ar-mode-tab" data-ar-mode="${t.mode}">${t.label}</button>`
+    ).join('');
+
+    modeTabsEl.querySelectorAll('.ar-mode-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        activeChipFilterMode = tab.getAttribute('data-ar-mode');
+        updateArPointButtons(false);
+      });
+    });
+  }
+
   // 綁定 AR 視窗內的穴位快速切換膠囊
   const chipContainer = document.getElementById('arPointChips');
   if (chipContainer) {
@@ -1674,7 +1811,7 @@ export function initArControls(onSelectPointInMainApp) {
 
     chipContainer.innerHTML = Object.entries(AR_SUPPORTED_POINTS)
       .map(([id, cfg]) => `
-        <button type="button" class="ar-point-chip" data-ar-point="${id}">
+        <button type="button" class="ar-point-chip" data-ar-point="${id}" data-ar-mode="${cfg.mode}">
           ${getModeEmoji(cfg.mode)} ${cfg.name} (${id})
         </button>
       `)
@@ -1692,7 +1829,7 @@ export function initArControls(onSelectPointInMainApp) {
         if (cfg.footSide) {
           arState.footSide = cfg.footSide;
         }
-        updateArPointButtons();
+        updateArPointButtons(true);
 
         const hintEl = document.getElementById('arHintBanner');
         if (hintEl) hintEl.textContent = cfg.hint;

@@ -1,15 +1,16 @@
-// 💾 localStorage 持久化 + 備份匯出／匯入（收藏、體質紀錄、自訂處方、偏好設定）
+// 💾 localStorage 持久化 + 備份匯出／匯入（收藏、體質紀錄、自訂處方、單穴秒數、偏好設定）
 import { state } from './state.js';
 
 export const STORAGE_KEYS = {
   FAVS: 'acupoint_favs_v1',
   LOGS: 'acupoint_logs_v1',
   CUSTOM_PRESETS: 'acupoint_custom_presets_v1',
+  DURATIONS: 'acupoint_durations_v1',
   SETTINGS: 'acupoint_settings_v1'
 };
 
 const MAX_LOGS = 300;
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 function safeSet(key, value) {
   try {
@@ -41,7 +42,10 @@ function safeParse(raw, fallback) {
 export function loadPersistedData() {
   state.favorites = new Set(safeParse(localStorage.getItem(STORAGE_KEYS.FAVS), []));
   state.painLogs = safeParse(localStorage.getItem(STORAGE_KEYS.LOGS), []);
-  state.customPresets = safeParse(localStorage.getItem(STORAGE_KEYS.CUSTOM_PRESETS), []);
+  const loadedPresets = safeParse(localStorage.getItem(STORAGE_KEYS.CUSTOM_PRESETS), []);
+  state.customPresets = Array.isArray(loadedPresets) ? loadedPresets : [];
+  const loadedDurations = safeParse(localStorage.getItem(STORAGE_KEYS.DURATIONS), {});
+  state.playlist.durations = loadedDurations && typeof loadedDurations === 'object' ? loadedDurations : {};
   state.settings = { ...state.settings, ...safeParse(localStorage.getItem(STORAGE_KEYS.SETTINGS), {}) };
 }
 
@@ -58,6 +62,10 @@ export function saveCustomPresets() {
   safeSet(STORAGE_KEYS.CUSTOM_PRESETS, JSON.stringify(state.customPresets));
 }
 
+export function saveDurations() {
+  safeSet(STORAGE_KEYS.DURATIONS, JSON.stringify(state.playlist.durations || {}));
+}
+
 export function saveSettings() {
   safeSet(STORAGE_KEYS.SETTINGS, JSON.stringify(state.settings));
 }
@@ -71,6 +79,7 @@ export async function exportBackup() {
     favorites: [...state.favorites],
     painLogs: state.painLogs,
     customPresets: state.customPresets,
+    durations: state.playlist.durations || {},
     settings: state.settings
   };
   const json = JSON.stringify(payload, null, 2);
@@ -109,11 +118,13 @@ export async function importBackup(file, mode = 'merge') {
   const favs = Array.isArray(data.favorites) ? data.favorites : [];
   const logs = Array.isArray(data.painLogs) ? data.painLogs.filter((l) => l && l.pointId && l.timestamp) : [];
   const presets = Array.isArray(data.customPresets) ? data.customPresets : [];
+  const durations = data.durations && typeof data.durations === 'object' ? data.durations : {};
 
   if (mode === 'replace') {
     state.favorites = new Set(favs);
     state.painLogs = logs;
     state.customPresets = presets;
+    state.playlist.durations = { ...durations };
   } else {
     favs.forEach((id) => state.favorites.add(id));
     const seen = new Set(state.painLogs.map((l) => `${l.pointId}|${l.timestamp}`));
@@ -127,9 +138,11 @@ export async function importBackup(file, mode = 'merge') {
     state.painLogs.sort((a, b) => a.timestamp - b.timestamp);
     const presetIds = new Set(state.customPresets.map((p) => p.id));
     presets.forEach((p) => {
-      if (!presetIds.has(p.id)) state.customPresets.push(p);
+      if (p && p.id && !presetIds.has(p.id)) state.customPresets.push(p);
     });
+    state.playlist.durations = { ...(state.playlist.durations || {}), ...durations };
   }
+
   if (data.settings && typeof data.settings === 'object') {
     state.settings = { ...state.settings, ...data.settings };
   }
@@ -137,6 +150,12 @@ export async function importBackup(file, mode = 'merge') {
   saveFavorites();
   savePainLogs();
   saveCustomPresets();
+  saveDurations();
   saveSettings();
-  return { favorites: state.favorites.size, logs: state.painLogs.length, presets: state.customPresets.length };
+
+  return {
+    favorites: state.favorites.size,
+    logs: state.painLogs.length,
+    presets: state.customPresets.length
+  };
 }

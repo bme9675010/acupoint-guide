@@ -9,11 +9,11 @@ import {
   getCurrentSolarTerm,
   getCloseupSvgMarkup
 } from './data/index.js';
-import { AR_SUPPORTED_POINTS, openArModal, initArControls } from './arFinder.js';
+import { AR_SUPPORTED_POINTS, openArModal, closeArModal, isArModalOpen, initArControls } from './arFinder.js';
 import { state, COLLOQUIAL_SYNONYMS } from './modules/state.js';
-import { requestWakeLock, releaseWakeLock, playSingingBowl, speakGuide, vibrate } from './modules/audio.js';
+import { speakGuide } from './modules/audio.js';
 import { getBaseBodySvgMarkup } from './modules/bodySvg.js';
-import { loadPersistedData, saveFavorites, savePainLogs, exportBackup, importBackup } from './modules/storage.js';
+import { loadPersistedData, saveFavorites, savePainLogs, saveCustomPresets, exportBackup, importBackup } from './modules/storage.js';
 import { showToast } from './modules/ui.js';
 import { readDeepLinkFromUrl, syncUrlWithState, shareAcupointLink, sharePresetLink } from './modules/deeplink.js';
 import {
@@ -24,12 +24,67 @@ import {
   bindNodeKeyboardEvents
 } from './modules/gestures.js';
 import { initThemeListener, cycleThemeMode } from './modules/theme.js';
-import { toggleDailyReminder, startReminderScheduler } from './modules/reminder.js';
+import {
+  toggleDailyReminder,
+  startReminderScheduler,
+  setReminderTime,
+  downloadCalendarReminderIcs,
+  updateReminderUI
+} from './modules/reminder.js';
 import { buildMeridianHeatmapHtml } from './modules/heatmap.js';
 import { renderPresetEditorModal } from './modules/presetEditor.js';
 import { POSTURE_SCENARIOS } from './modules/posture.js';
 import { getArPackStatus, preloadArPack, registerServiceWorkerWithUpdates } from './modules/offline.js';
 import { initVoiceAndKeyboardControls, toggleVoiceControl } from './modules/voiceControl.js';
+import {
+  initTimerDeps,
+  toggleTimer,
+  stopAndResetTimer,
+  triggerManualSwitchSide,
+  formatTime,
+  getEffectiveDurationSec
+} from './modules/timer.js';
+import { openSymptomWizardModal } from './modules/wizard.js';
+
+// 暫存由親友分享連結或 3 題問診精靈產生的即時處方
+let sharedTempPreset = null;
+let wizardTempPreset = null;
+
+// 繪製當前選中穴位的「同經絡流光連線」（P2-3）
+function buildSameMeridianFlowSvg(selectedPt, currentView) {
+  if (!selectedPt || !selectedPt.meridian) return '';
+  // 足底反射區、耳穴與經外奇穴不屬十二正經循行線，略過連線
+  if (
+    ['sole', 'ear'].includes(currentView) ||
+    selectedPt.meridian.includes('奇穴') ||
+    selectedPt.meridian.includes('反射') ||
+    selectedPt.meridian.includes('耳穴')
+  ) {
+    return '';
+  }
+
+  const sameMeridianPts = ACUPOINTS.filter(
+    (pt) => pt.meridian === selectedPt.meridian && pt.views[currentView]
+  ).sort((a, b) => a.views[currentView].y - b.views[currentView].y);
+
+  if (sameMeridianPts.length < 2) return '';
+
+  const buildPath = (coords) =>
+    coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
+
+  const mainCoords = sameMeridianPts.map((pt) => pt.views[currentView]);
+  let paths = `<path class="meridian-flow-line" d="${buildPath(mainCoords)}" />`;
+
+  // 若為左右對稱全身視圖且此經絡非正中單線，也繪製對稱側流光線
+  const isSymmetricView = ['front', 'back', 'head'].includes(currentView);
+  const hasOffCenter = mainCoords.some((c) => Math.abs(c.x - 200) > 4);
+  if (isSymmetricView && hasOffCenter) {
+    const mirrorCoords = mainCoords.map((c) => ({ x: 400 - c.x, y: c.y }));
+    paths += `<path class="meridian-flow-line mirror" d="${buildPath(mirrorCoords)}" />`;
+  }
+
+  return `<g class="meridian-flow-layer" aria-hidden="true">${paths}</g>`;
+}
 
 // 渲染人體 SVG 與穴位點
 function renderBodyCanvas() {
@@ -37,6 +92,8 @@ function renderBodyCanvas() {
   if (!svg) return;
 
   const baseMarkup = getBaseBodySvgMarkup(state.currentView, state.xrayOpacity);
+  const selectedPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+  const meridianFlowMarkup = buildSameMeridianFlowSvg(selectedPt, state.currentView);
   const nodesMarkup = [];
 
   ACUPOINTS.forEach((pt) => {
@@ -85,7 +142,7 @@ function renderBodyCanvas() {
     }
   });
 
-  svg.innerHTML = baseMarkup + `<g class="acupoints-layer">${nodesMarkup.join('')}</g>`;
+  svg.innerHTML = baseMarkup + meridianFlowMarkup + `<g class="acupoints-layer">${nodesMarkup.join('')}</g>`;
 
   svg.querySelectorAll('.acupoint-node, .reflex-zone-poly').forEach((node) => {
     node.addEventListener('click', () => {
@@ -214,10 +271,13 @@ function updatePainLogAndConstitutionUI() {
     countEl.textContent = String(state.painLogs.length);
   }
 
+  const streak = calculateStreakDays(state.painLogs);
+  const streakDaysText = document.getElementById('streakDaysText');
+  if (streakDaysText) {
+    streakDaysText.textContent = streak > 0 ? `🔥 連續 ${streak} 天` : '🌱 今日尚未打卡';
+  }
   const streakBadge = document.getElementById('streakBadge');
   if (streakBadge) {
-    const streak = calculateStreakDays(state.painLogs);
-    streakBadge.textContent = streak > 0 ? `🔥 連續 ${streak} 天` : '🌱 今日尚未打卡';
     streakBadge.title = `已連續打卡 ${streak} 天・累計 ${state.painLogs.length} 次手感紀錄`;
   }
 
@@ -516,11 +576,12 @@ function renderInspector(point) {
   document.getElementById('guideFinger').textContent = point.massageGuide.fingerToUse;
   document.getElementById('guideSensation').textContent = point.massageGuide.sensation;
 
-  const { pressSeconds, releaseSeconds, totalDurationSec, bilateral } = point.massageGuide.rhythm;
+  const { pressSeconds, releaseSeconds, bilateral } = point.massageGuide.rhythm;
+  const effectiveSec = getEffectiveDurationSec(point);
   document.getElementById('timerRhythmMeta').textContent =
     `深按 ${pressSeconds} 秒・放鬆 ${releaseSeconds} 秒（${bilateral ? '左右交替' : '單點按揉'}）`;
   document.getElementById('orbTotalLeft').textContent =
-    `單穴時長 ${formatTime(totalDurationSec)}`;
+    `單穴時長 ${formatTime(effectiveSec)}`;
 
   // Tab 3: 功效與配穴
   const tcmList = document.getElementById('tcmFunctionsList');
@@ -569,12 +630,6 @@ function renderInspector(point) {
   });
 }
 
-function formatTime(sec) {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
 function switchDetailTab(tabId) {
   document.querySelectorAll('.detail-tab-btn').forEach((b) => {
     b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
@@ -584,25 +639,83 @@ function switchDetailTab(tabId) {
   });
 }
 
-// 取得所有處方（含動態「⭐ 我的收藏處方」）
+// 取得所有處方（含親友分享臨時處方、問診臨時處方、⭐ 我的收藏處方、多組自訂處方與內建 10 組處方）
 function getAllPresets() {
   const list = [...SYMPTOM_PRESETS];
-  if (state.favorites.size > 0) {
-    const favPoints = [...state.favorites];
-    const favNames = favPoints
+
+  const formatSub = (pts) => {
+    const names = pts
       .map((id) => ACUPOINTS.find((p) => p.id === id)?.name)
       .filter(Boolean)
       .slice(0, 3)
       .join('＋');
+    return `${names}${pts.length > 3 ? ` 等 ${pts.length} 穴` : ''}`;
+  };
+
+  // 多組使用者自訂命名處方（P2-1）
+  const customCards = (state.customPresets || [])
+    .filter((p) => p && p.id && Array.isArray(p.points) && p.points.length > 0)
+    .map((p) => ({
+      id: p.id,
+      title: p.title || '我的自訂處方',
+      subtitle: formatSub(p.points),
+      icon: p.icon || '🌿',
+      points: p.points,
+      isCustom: true
+    }));
+
+  if (customCards.length > 0) {
+    list.unshift(...customCards);
+  }
+
+  if (state.favorites.size > 0) {
+    const favPoints = [...state.favorites];
     list.unshift({
       id: 'fav_custom',
       title: '我的收藏處方',
-      subtitle: `${favNames}${favPoints.length > 3 ? ` 等 ${favPoints.length} 穴` : ''}`,
+      subtitle: formatSub(favPoints),
       icon: '⭐',
-      points: favPoints
+      points: favPoints,
+      isFav: true
     });
   }
+
+  if (wizardTempPreset && wizardTempPreset.points?.length) {
+    list.unshift(wizardTempPreset);
+  }
+
+  if (sharedTempPreset && sharedTempPreset.points?.length) {
+    list.unshift(sharedTempPreset);
+  }
+
   return list;
+}
+
+// 啟用指定處方（統一處理選取、高亮與網址同步）
+function activatePresetById(id) {
+  const preset = getAllPresets().find((p) => p.id === id);
+  if (!preset || !preset.points?.length) return false;
+
+  state.playlist.isPlaying = false;
+  state.playlist.completedIds.clear();
+  state.activePresetId = id;
+  state.activeSymptomTag = null;
+  state.activePosture = null;
+
+  const noResultEl = document.getElementById('searchNoResultBanner');
+  if (noResultEl) noResultEl.style.display = 'none';
+  const searchInput = document.getElementById('symptomSearchInput');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  if (searchInput) searchInput.value = '';
+  if (clearSearchBtn) clearSearchBtn.style.display = 'none';
+
+  renderPresetRow();
+  document.querySelectorAll('.symptom-chip').forEach((c) => c.classList.remove('active'));
+  state.highlightedIds = new Set(preset.points);
+  selectAcupoint(preset.points[0], true);
+  updatePlaylistBannerUI();
+  syncUrlWithState(preset);
+  return true;
 }
 
 // 🎵 處方連續自動跟練播放清單控制
@@ -654,7 +767,17 @@ function updatePlaylistBannerUI() {
 
   const editBtn = document.getElementById('editPlaylistBtn');
   if (editBtn) {
-    editBtn.style.display = state.activePresetId === 'fav_custom' ? 'inline-block' : 'none';
+    const isEditable = state.activePresetId === 'fav_custom' || state.activePresetId?.startsWith('custom_');
+    const isTempSavable = state.activePresetId === 'shared_link' || state.activePresetId === 'wizard_temp';
+    if (isEditable) {
+      editBtn.style.display = 'inline-block';
+      editBtn.textContent = '✏️ 調整順序/秒數';
+    } else if (isTempSavable) {
+      editBtn.style.display = 'inline-block';
+      editBtn.textContent = '💾 存成自訂處方';
+    } else {
+      editBtn.style.display = 'none';
+    }
   }
 
   if (state.playlist.isPlaying) {
@@ -704,180 +827,19 @@ function togglePlaylistExecution() {
       : '';
     speakGuide(`開始${preset.title}處方跟練${skipNotice}，第一穴：${firstPt.name}穴，請深按`);
   }
-  toggleTimer();
+  // skipInitialVoice=true：避免「深按」把開場完整語音截斷（修復 P0-2）
+  toggleTimer({ skipInitialVoice: true });
 }
 
-// 啟動或暫停呼吸跟練計時器（支援單穴跟練與處方自動跳下一穴 + iPhone 螢幕防休眠）
-function toggleTimer() {
-  const point = ACUPOINTS.find((p) => p.id === state.selectedPointId);
-  if (!point) return;
-
-  const btn = document.getElementById('startTimerBtn');
-  const ring = document.getElementById('breathingRing');
-  const phaseEl = document.getElementById('orbPhase');
-  const secEl = document.getElementById('orbSeconds');
-  const totalEl = document.getElementById('orbTotalLeft');
-
-  if (state.timer.running) {
-    clearInterval(state.timer.intervalId);
-    state.timer.running = false;
-    btn.textContent = '繼續跟練';
-    phaseEl.textContent = '已暫停';
-    ring.className = 'breathing-orb-ring';
-    releaseWakeLock();
-    return;
-  }
-
-  const { pressSeconds, releaseSeconds, totalDurationSec } = point.massageGuide.rhythm;
-  const effectiveDurationSec = state.playlist.durations?.[point.id] || totalDurationSec;
-  if (state.timer.phase === 'idle') {
-    state.timer.phase = 'press';
-    state.timer.phaseTimeLeft = pressSeconds;
-    state.timer.totalTimeLeft = effectiveDurationSec;
-  }
-
-  state.timer.running = true;
-  btn.textContent = '暫停跟練';
-  requestWakeLock();
-
-  const updateTimerUI = (triggerSound = false) => {
-    const prefix = state.playlist.isPlaying
-      ? `[處方 ${state.playlist.currentIndex + 1}/${state.playlist.queue.length} ${point.name}] `
-      : '';
-    const isChildPoint = point.id.startsWith('PED-');
-    if (state.timer.phase === 'press') {
-      phaseEl.textContent = isChildPoint ? '輕快推撫・柔和' : '吐氣・深按';
-      ring.className = 'breathing-orb-ring pressing';
-      if (triggerSound) {
-        playSingingBowl('press');
-        vibrate('press');
-        speakGuide(isChildPoint ? '輕撫' : '深按');
-      }
-    } else {
-      phaseEl.textContent = isChildPoint ? '順時慢撫・放鬆' : '吸氣・緩放';
-      ring.className = 'breathing-orb-ring releasing';
-      if (triggerSound) {
-        playSingingBowl('release');
-        vibrate('release');
-        speakGuide('放鬆');
-      }
-    }
-    secEl.textContent = `${state.timer.phaseTimeLeft}s`;
-    totalEl.textContent = `${prefix}剩餘 ${formatTime(state.timer.totalTimeLeft)}`;
-  };
-
-  updateTimerUI(true);
-
-  state.timer.intervalId = setInterval(() => {
-    state.timer.phaseTimeLeft -= 1;
-    state.timer.totalTimeLeft -= 1;
-
-    if (state.timer.totalTimeLeft <= 0) {
-      stopAndResetTimer();
-
-      // 若處於「處方連續跟練模式」，自動推進到下一顆穴位！
-      if (state.playlist.isPlaying) {
-        state.playlist.completedIds.add(point.id);
-        state.playlist.currentIndex += 1;
-
-        if (state.playlist.currentIndex < state.playlist.queue.length) {
-          const nextId = state.playlist.queue[state.playlist.currentIndex];
-          const nextPt = ACUPOINTS.find((p) => p.id === nextId);
-          selectAcupoint(nextId, true, false);
-          updatePlaylistBannerUI();
-          playSingingBowl('press');
-          vibrate('switchSide');
-          if (nextPt) {
-            speakGuide(`完成${point.name}穴，現在換下一穴：${nextPt.name}穴，請深按`);
-          }
-          toggleTimer();
-          return;
-        } else {
-          // 整套處方全部按完
-          state.playlist.isPlaying = false;
-          updatePlaylistBannerUI();
-          phaseEl.textContent = '處方圓滿完成';
-          secEl.textContent = '🎉';
-          playSingingBowl('press');
-          vibrate('done');
-          speakGuide('恭喜您完成整套養生處方按揉，請紀錄下方按後手感並喝溫水休息');
-          return;
-        }
-      }
-
-      phaseEl.textContent = '功德圓滿';
-      secEl.textContent = '✓';
-      playSingingBowl('press');
-      vibrate('done');
-      speakGuide('按揉完成，請於下方點擊紀錄您的按後痛感');
-      return;
-    }
-
-    // 若為左右雙穴，在計時過半（剩餘一半秒數）時自動提示「換另一側按揉」
-    const halfSec = Math.floor(effectiveDurationSec / 2);
-    if (point.massageGuide.rhythm.bilateral && state.timer.totalTimeLeft === halfSec) {
-      playSingingBowl('press');
-      vibrate('switchSide');
-      speakGuide('時間過半，若單手按揉請換另一側');
-      state.timer.phase = 'press';
-      state.timer.phaseTimeLeft = pressSeconds;
-      phaseEl.textContent = '🔄 請換另一側・深按';
-      updateTimerUI(true);
-      return;
-    }
-
-    if (state.timer.phaseTimeLeft <= 0) {
-      if (state.timer.phase === 'press') {
-        state.timer.phase = 'release';
-        state.timer.phaseTimeLeft = releaseSeconds;
-      } else {
-        state.timer.phase = 'press';
-        state.timer.phaseTimeLeft = pressSeconds;
-      }
-      updateTimerUI(true);
-    } else {
-      updateTimerUI(false);
-    }
-  }, 1000);
-}
-
-function stopAndResetTimer() {
-  if (state.timer.intervalId) {
-    clearInterval(state.timer.intervalId);
-  }
-  releaseWakeLock();
-
-  const point = ACUPOINTS.find((p) => p.id === state.selectedPointId);
-  const totalSec = point ? point.massageGuide.rhythm.totalDurationSec : 60;
-
-  state.timer = {
-    running: false,
-    phase: 'idle',
-    phaseTimeLeft: 0,
-    totalTimeLeft: totalSec,
-    intervalId: null
-  };
-
-  const btn = document.getElementById('startTimerBtn');
-  const ring = document.getElementById('breathingRing');
-  const phaseEl = document.getElementById('orbPhase');
-  const secEl = document.getElementById('orbSeconds');
-  const totalEl = document.getElementById('orbTotalLeft');
-
-  if (btn) btn.textContent = '開始跟練按揉';
-  if (ring) ring.className = 'breathing-orb-ring';
-  if (phaseEl) phaseEl.textContent = '準備開始';
-  if (secEl) secEl.textContent = '--';
-  if (totalEl) totalEl.textContent = `單穴時長 ${formatTime(totalSec)}`;
-}
-
-// 渲染處方籤列（含⭐我的收藏處方）
+// 渲染處方籤列（含⭐收藏、多組自訂處方與「➕ 建立自訂處方」入口）
 function renderPresetRow() {
   const presetRow = document.getElementById('presetRow');
   if (!presetRow) return;
 
   const allPresets = getAllPresets();
-  presetRow.innerHTML = allPresets.map((preset) => `
+  const cardsHtml = allPresets
+    .map(
+      (preset) => `
     <div class="preset-card ${state.activePresetId === preset.id ? 'active' : ''}" data-preset-id="${preset.id}">
       <span class="preset-icon">${preset.icon}</span>
       <div>
@@ -885,9 +847,35 @@ function renderPresetRow() {
         <div class="preset-sub">${preset.subtitle}</div>
       </div>
     </div>
-  `).join('');
+  `
+    )
+    .join('');
 
-  presetRow.querySelectorAll('.preset-card').forEach((card) => {
+  const addNewCardHtml = `
+    <div class="preset-card preset-card-add" id="addCustomPresetCard" title="建立多組專屬養生處方，自排順序與秒數">
+      <span class="preset-icon">➕</span>
+      <div>
+        <div class="preset-title">建立自訂處方</div>
+        <div class="preset-sub">自選穴位・排順序・調秒數</div>
+      </div>
+    </div>
+  `;
+
+  presetRow.innerHTML = cardsHtml + addNewCardHtml;
+
+  presetRow.querySelector('#addCustomPresetCard')?.addEventListener('click', () => {
+    renderPresetEditorModal(
+      ACUPOINTS,
+      (savedId) => {
+        renderPresetRow();
+        if (savedId) activatePresetById(savedId);
+        else updatePlaylistBannerUI();
+      },
+      { targetPresetId: '__new__' }
+    );
+  });
+
+  presetRow.querySelectorAll('.preset-card[data-preset-id]').forEach((card) => {
     card.addEventListener('click', () => {
       const id = card.getAttribute('data-preset-id');
       state.playlist.isPlaying = false;
@@ -903,19 +891,7 @@ function renderPresetRow() {
         return;
       }
 
-      state.activePresetId = id;
-      state.activeSymptomTag = null;
-      presetRow.querySelectorAll('.preset-card').forEach((c) => c.classList.remove('active'));
-      document.querySelectorAll('.symptom-chip').forEach((c) => c.classList.remove('active'));
-      card.classList.add('active');
-
-      const preset = getAllPresets().find((p) => p.id === id);
-      if (preset && preset.points.length > 0) {
-        state.highlightedIds = new Set(preset.points);
-        selectAcupoint(preset.points[0], true);
-        updatePlaylistBannerUI();
-        syncUrlWithState();
-      }
+      activatePresetById(id);
     });
   });
 }
@@ -1061,8 +1037,12 @@ function applyColloquialSearch(rawQuery) {
   if (clearBtn) clearBtn.style.display = 'inline-block';
 
   const noResultEl = document.getElementById('searchNoResultBanner');
+  const noResultText = document.getElementById('searchNoResultText');
   if (matchedSet.size === 0) {
-    if (noResultEl) noResultEl.style.display = 'block';
+    if (noResultText) {
+      noResultText.textContent = `🔍 找不到「${rawQuery.trim()}」，試試換個白話說法或點選下方熱門處方：`;
+    }
+    if (noResultEl) noResultEl.style.display = 'flex';
     renderBodyCanvas();
   } else {
     if (noResultEl) noResultEl.style.display = 'none';
@@ -1190,23 +1170,31 @@ function initSolarTerms() {
   document.getElementById('solarTermJumpBtn')?.addEventListener('click', triggerTermHighlight);
 }
 
-// 免手碰語音口令與鍵盤快捷鍵調度處理中心
-function handleVoiceOrKeyboardAction(action, detail = {}) {
-  const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+// 關閉全部已開啟的彈窗（Escape 鍵 / 語音口令）
+function closeAllModals() {
+  if (isArModalOpen()) {
+    closeArModal();
+  }
+  ['settingsModal', 'presetEditorModal', 'symptomWizardModal'].forEach((id) => {
+    document.getElementById(id)?.classList.remove('open');
+  });
+}
 
+// 免手碰語音口令與鍵盤快捷鍵調度處理中心（修復 P0-1 與 P1-5）
+function handleVoiceOrKeyboardAction(action) {
   switch (action) {
     case 'toggleTimer':
       toggleTimer();
       break;
 
     case 'start':
-      if (!state.timer.isRunning) {
+      if (!state.timer.running) {
         toggleTimer();
       }
       break;
 
     case 'pause':
-      if (state.timer.isRunning) {
+      if (state.timer.running) {
         toggleTimer();
       }
       break;
@@ -1259,21 +1247,9 @@ function handleVoiceOrKeyboardAction(action, detail = {}) {
       break;
     }
 
-    case 'switchSide': {
-      if (currentPt && currentPt.massageGuide.rhythm.bilateral) {
-        playSingingBowl('press');
-        vibrate('switchSide');
-        speakGuide('換另一側按揉，請深按');
-        state.timer.phase = 'press';
-        state.timer.phaseTimeLeft = currentPt.massageGuide.rhythm.pressSeconds;
-        const phaseEl = document.getElementById('orbPhase');
-        if (phaseEl) phaseEl.textContent = '🔄 請換另一側・深按';
-        updateTimerUI(true);
-      } else {
-        showToast('本穴位為人體正中單穴或無需特別換側');
-      }
+    case 'switchSide':
+      triggerManualSwitchSide();
       break;
-    }
 
     case 'flipCloseup': {
       const flipBtn = document.getElementById('flipCloseupBtn');
@@ -1282,15 +1258,22 @@ function handleVoiceOrKeyboardAction(action, detail = {}) {
     }
 
     case 'capture': {
+      if (!isArModalOpen()) {
+        showToast('💡 請先開啟 AR 鏡頭後再說「定格」或「拍照」');
+        return;
+      }
       const freezeBtn = document.getElementById('freezeArBtn');
       if (freezeBtn) freezeBtn.click();
       break;
     }
 
-    case 'openAr': {
+    case 'openAr':
       openArModal(state.selectedPointId);
       break;
-    }
+
+    case 'closeModal':
+      closeAllModals();
+      break;
   }
 }
 
@@ -1329,12 +1312,43 @@ function bindEvents() {
     clearAllFilters();
   });
 
-  // 🤰 孕期安全鎖事件
+  // ⚙️ 個人化設定彈窗開關
+  const settingsModal = document.getElementById('settingsModal');
+  document.getElementById('openSettingsBtn')?.addEventListener('click', () => {
+    updateReminderUI();
+    settingsModal?.classList.add('open');
+  });
+  document.getElementById('closeSettingsBtn')?.addEventListener('click', () => {
+    settingsModal?.classList.remove('open');
+  });
+  settingsModal?.addEventListener('click', (e) => {
+    if (e.target === settingsModal) settingsModal.classList.remove('open');
+  });
+
+  // 🩺 3 題問診式動態配穴精靈
+  document.getElementById('openWizardBtn')?.addEventListener('click', () => {
+    openSymptomWizardModal(ACUPOINTS, {
+      onApplyTempPreset: (tempPreset) => {
+        wizardTempPreset = tempPreset;
+        renderPresetRow();
+        activatePresetById(tempPreset.id);
+        showToast(`🩺 已為您開啟【${tempPreset.title}】，點擊「▶️ 連續跟練」即可開始！`);
+      },
+      onSaveCustomPreset: (savedPreset) => {
+        renderPresetRow();
+        activatePresetById(savedPreset.id);
+      }
+    });
+  });
+
+  // 🤰 孕期安全鎖事件（同步 Header 小紅標）
   const pregCheckbox = document.getElementById('pregnancySafeCheckbox');
   const pregLabel = document.getElementById('pregnancySafeToggle');
+  const pregDot = document.getElementById('pregnancyActiveDot');
   pregCheckbox?.addEventListener('change', (e) => {
     state.pregnancySafeMode = e.target.checked;
     pregLabel?.classList.toggle('active', state.pregnancySafeMode);
+    if (pregDot) pregDot.style.display = state.pregnancySafeMode ? 'inline' : 'none';
     renderBodyCanvas();
     const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
     if (currentPt) renderInspector(currentPt);
@@ -1398,7 +1412,7 @@ function bindEvents() {
     });
   });
 
-  document.getElementById('startTimerBtn')?.addEventListener('click', toggleTimer);
+  document.getElementById('startTimerBtn')?.addEventListener('click', () => toggleTimer());
   document.getElementById('resetTimerBtn')?.addEventListener('click', () => {
     state.playlist.isPlaying = false;
     stopAndResetTimer();
@@ -1408,12 +1422,39 @@ function bindEvents() {
   document.getElementById('startPlaylistBtn')?.addEventListener('click', togglePlaylistExecution);
 
   document.getElementById('editPlaylistBtn')?.addEventListener('click', () => {
-    renderPresetEditorModal(ACUPOINTS, () => {
-      renderPresetRow();
-      updatePlaylistBannerUI();
-      const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
-      if (currentPt) renderInspector(currentPt);
-    });
+    // 若是親友分享連結或問診臨時處方，直接一鍵存成永久自訂處方
+    if (state.activePresetId === 'shared_link' || state.activePresetId === 'wizard_temp') {
+      const tempObj = getAllPresets().find((p) => p.id === state.activePresetId);
+      if (tempObj && tempObj.points?.length) {
+        const saved = {
+          id: `custom_${Date.now()}`,
+          title: tempObj.title.replace(/^問診配穴：/, ''),
+          icon: tempObj.icon || '🌿',
+          points: [...tempObj.points]
+        };
+        state.customPresets.unshift(saved);
+        saveCustomPresets();
+        renderPresetRow();
+        activatePresetById(saved.id);
+        showToast(`💾 已永久存成我的自訂處方【${saved.title}】！`);
+      }
+      return;
+    }
+
+    renderPresetEditorModal(
+      ACUPOINTS,
+      (savedId) => {
+        renderPresetRow();
+        if (savedId && savedId !== state.activePresetId) {
+          activatePresetById(savedId);
+        } else {
+          updatePlaylistBannerUI();
+          const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+          if (currentPt) renderInspector(currentPt);
+        }
+      },
+      { targetPresetId: state.activePresetId || 'fav_custom' }
+    );
   });
 
   // 🔗 分享穴位連結
@@ -1422,11 +1463,11 @@ function bindEvents() {
     if (pt) shareAcupointLink(pt);
   });
 
-  // 🔗 分享處方箋連結
+  // 🔗 分享處方箋連結（支援內建處方與自訂／收藏處方完整編碼）
   document.getElementById('sharePlaylistBtn')?.addEventListener('click', () => {
     const preset = getAllPresets().find((p) => p.id === state.activePresetId);
     if (preset) {
-      sharePresetLink(preset);
+      sharePresetLink(preset, ACUPOINTS);
     } else {
       showToast('請先由上方處方籤列選擇一組處方再分享');
     }
@@ -1462,10 +1503,7 @@ function bindEvents() {
   document.querySelectorAll('#searchNoResultBanner [data-quick-preset]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const pid = btn.getAttribute('data-quick-preset');
-      const card = document.querySelector(`.preset-card[data-preset-id="${pid}"]`);
-      if (card) {
-        card.click();
-      }
+      activatePresetById(pid);
     });
   });
 
@@ -1476,15 +1514,31 @@ function bindEvents() {
     showToast(`🎨 已切換為：${labelMap[nextMode]}`);
   });
 
-  // ⏰ 每日按穴提醒
+  // ⏰ 每日按穴提醒（支援自選時間、快速預設與 .ics 行事曆鬧鐘）
+  const reminderTimeInput = document.getElementById('reminderTimeInput');
+  reminderTimeInput?.addEventListener('change', (e) => {
+    setReminderTime(e.target.value);
+  });
+  document.querySelectorAll('.reminder-quick-time').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const t = btn.getAttribute('data-time');
+      if (t) setReminderTime(t);
+    });
+  });
   document.getElementById('reminderToggleBtn')?.addEventListener('click', () => {
-    toggleDailyReminder('21:30');
+    const t = reminderTimeInput?.value || state.settings.reminderTime || '21:30';
+    toggleDailyReminder(t);
+  });
+  document.getElementById('downloadIcsBtn')?.addEventListener('click', () => {
+    const t = reminderTimeInput?.value || state.settings.reminderTime || '21:30';
+    downloadCalendarReminderIcs(t);
+    showToast(`📅 已下載每日 ${t} 行事曆循環提醒 (.ics)`);
   });
 
   // 📤 備份匯出 / 📥 備份還原
   document.getElementById('backupExportBtn')?.addEventListener('click', async () => {
     const res = await exportBackup();
-    if (res === 'downloaded') showToast('📤 已下載本機收藏與體質紀錄備份檔 (.json)');
+    if (res === 'downloaded') showToast('📤 已下載本機收藏、自訂處方與體質紀錄備份檔 (.json)');
     else if (res === 'shared') showToast('📤 已匯出備份檔');
   });
 
@@ -1498,11 +1552,12 @@ function bindEvents() {
     try {
       const summary = await importBackup(file, 'merge');
       initThemeListener();
+      updateReminderUI();
       renderPresetRow();
       updatePlaylistBannerUI();
       const pt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
       if (pt) renderInspector(pt);
-      showToast(`📥 還原成功！共 ${summary.favorites} 顆收藏穴位、${summary.logs} 筆體感紀錄`);
+      showToast(`📥 還原成功！共 ${summary.favorites} 顆收藏、${summary.presets} 組自訂處方、${summary.logs} 筆紀錄`);
     } catch (err) {
       showToast(`⚠️ 匯入失敗：${err.message || '檔案格式不符'}`);
     } finally {
@@ -1527,7 +1582,7 @@ function bindEvents() {
         arPackBtn.textContent = `⏳ ${done}/${total} ${label}`;
       });
       arPackBtn.textContent = '✓ AR離線已就緒';
-      showToast('📦 AR 手部與臉部 AI 模型已存入離線快取，無網路也能開 AR！');
+      showToast('📦 AR 手部、臉部與姿態 AI 模型已存入離線快取，無網路也能開 AR！');
     } catch (err) {
       arPackBtn.textContent = '📦 重試離線包';
       showToast(`⚠️ 離線包下載失敗：${err.message || '請確認網路連線'}`);
@@ -1553,6 +1608,11 @@ function bindEvents() {
 // 啟動應用
 window.addEventListener('DOMContentLoaded', () => {
   loadPersistedData();
+  initTimerDeps({
+    getAllPoints: () => ACUPOINTS,
+    selectAcupoint,
+    updatePlaylistBannerUI
+  });
   initThemeListener();
   startReminderScheduler();
   initZiwuLiuzhu();
@@ -1562,17 +1622,26 @@ window.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   initVoiceAndKeyboardControls({ onAction: handleVoiceOrKeyboardAction });
 
-  const deep = readDeepLinkFromUrl(ACUPOINTS, getAllPresets());
+  const deep = readDeepLinkFromUrl(ACUPOINTS);
   if (deep.view) {
     state.currentView = deep.view;
     updateViewTabButtons();
   }
-  if (deep.presetId) {
-    const card = document.querySelector(`.preset-card[data-preset-id="${deep.presetId}"]`);
-    if (card) {
-      card.click();
+
+  let handledPreset = false;
+  if (deep.sharedPreset) {
+    sharedTempPreset = deep.sharedPreset;
+    renderPresetRow();
+    handledPreset = activatePresetById(deep.sharedPreset.id);
+    if (handledPreset) {
+      showToast(`💌 已載入親友分享的處方【${deep.sharedPreset.title}】，可立即開始跟練！`, 4000);
     }
-  } else {
+  } else if (deep.presetId) {
+    handledPreset = activatePresetById(deep.presetId);
+  }
+
+  // 安全回退：若分享處方 ID 在本機不存在，仍正常顯示穴位而不留空白殼（修復 P0-6）
+  if (!handledPreset) {
     selectAcupoint(deep.pointId || 'LI4', !deep.view);
   }
 
