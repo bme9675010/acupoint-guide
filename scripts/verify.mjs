@@ -163,6 +163,31 @@ const rDeep = timerMod.getEffectiveRhythm(samplePt);
 stateMod.state.settings.rhythmLevel = 'standard';
 assert(rGentle.pressSeconds < rDeep.pressSeconds, `按壓節奏強度倍率正常 (柔和=${rGentle.pressSeconds}s < 深層=${rDeep.pressSeconds}s)`);
 
+// 8. 底層手勢、相容性、Wall-Clock 與 P2 進階模組檢查
+const cssCode = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+assert(cssCode.includes('touch-action: pan-y') && cssCode.includes('.body-svg.zoomed-in'), '手機版未放大時允許單指垂直捲頁');
+
+const gesturesCode = fs.readFileSync(path.join(root, 'modules/gestures.js'), 'utf8');
+assert(gesturesCode.includes('e.stopPropagation()'), 'SVG 鍵盤導覽已阻斷冒泡避免與全域快捷鍵打架');
+
+const rawRoundRectCalls = (arCode.match(/\b(ctx|octx)\.roundRect\(/g) || []).length;
+assert(arCode.includes("delegate: 'CPU'") && arCode.includes('function safeRoundRect') && rawRoundRectCalls === 1, 'AR 支援 GPU→CPU 自動降級且全面改用 safeRoundRect');
+
+const timerCode = fs.readFileSync(path.join(root, 'modules/timer.js'), 'utf8');
+assert(timerCode.includes('Date.now()'), '計時器採用 Wall-Clock Delta 校準防背景慢秒');
+
+assert(appCode.includes("addEventListener('popstate'"), '已綁定 popstate 支援瀏覽器上一頁／下一頁同步');
+
+const compareMod = await import(pathToFileURL(path.join(root, 'modules/compare.js')).href);
+const badCompare = [];
+compareMod.CONFUSION_GROUPS.forEach((g) => g.points.forEach((pid) => { if (!ids.has(pid)) badCompare.push(`${g.id}->${pid}`); }));
+assert(compareMod.CONFUSION_GROUPS.length >= 9 && badCompare.length === 0, `易混淆鄰穴對照 ${compareMod.CONFUSION_GROUPS.length} 組穴位 ID 全部有效`);
+
+const heatmapMod = await import(pathToFileURL(path.join(root, 'modules/heatmap.js')).href);
+const calHtml = heatmapMod.build28DayCalendarHtml([{ timestamp: Date.now(), painType: 'smooth' }]);
+const calCount = (calHtml.match(/class="cal-cell/g) || []).length;
+assert(calCount === 28, `近 28 天打卡日曆格產出正確 (${calCount} 格)`);
+
 console.log('\n========================================');
 if (failures === 0) {
   console.log('🎉 ALL CHECKS PASSED (0 failures)');

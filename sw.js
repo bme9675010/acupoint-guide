@@ -1,4 +1,4 @@
-const CACHE_NAME = 'acupoint-guide-v13';
+const CACHE_NAME = 'acupoint-guide-v14';
 const AR_CACHE = 'acupoint-ar-v1'; // AR 模型離線包（約 20MB），不隨版本升級清除
 const KEEP_CACHES = [CACHE_NAME, AR_CACHE];
 
@@ -38,7 +38,9 @@ const ASSETS = [
   './modules/timer.js',
   './modules/wizard.js',
   './modules/directory.js',
-  './modules/reportCard.js'
+  './modules/reportCard.js',
+  './modules/compare.js',
+  './modules/zenMode.js'
 ];
 
 self.addEventListener('install', (event) => {

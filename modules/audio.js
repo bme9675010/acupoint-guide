@@ -39,6 +39,7 @@ if (typeof document !== 'undefined') {
 let audioCtx = null;
 
 export function ensureAudioContext() {
+  if (typeof window === 'undefined') return;
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (AudioContextClass) {
@@ -46,12 +47,23 @@ export function ensureAudioContext() {
     }
   }
   if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
+    audioCtx.resume().catch(() => {});
   }
 }
 
+// 首次任意觸控／按鍵即預先解鎖 iOS AudioContext，確保免手碰語音口令「開始」能即時發聲（P0-5）
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  const unlockOnce = () => {
+    ensureAudioContext();
+    window.removeEventListener('pointerdown', unlockOnce);
+    window.removeEventListener('keydown', unlockOnce);
+  };
+  window.addEventListener('pointerdown', unlockOnce, { passive: true });
+  window.addEventListener('keydown', unlockOnce, { passive: true });
+}
+
 export function playSingingBowl(type = 'press') {
-  const soundEnabled = document.getElementById('soundToggle')?.checked;
+  const soundEnabled = document.getElementById('soundToggle')?.checked ?? state.settings?.soundEnabled ?? true;
   if (!soundEnabled) return;
 
   ensureAudioContext();

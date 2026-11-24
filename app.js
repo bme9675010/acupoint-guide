@@ -47,10 +47,26 @@ import {
 import { openSymptomWizardModal } from './modules/wizard.js';
 import { openDirectoryModal } from './modules/directory.js';
 import { exportConstitutionReportCard } from './modules/reportCard.js';
+import { getConfusionGroupForPoint, openPointCompareModal } from './modules/compare.js';
+import { openZenMode, refreshZenModePoint, closeZenMode } from './modules/zenMode.js';
 
 // 暫存由親友分享連結或 3 題問診精靈產生的即時處方
 let sharedTempPreset = null;
 let wizardTempPreset = null;
+let isMobileViewingInspector = false;
+
+function updateMobileJumpFabUI() {
+  const fab = document.getElementById('mobileJumpFab');
+  if (!fab) return;
+  const pt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+  if (isMobileViewingInspector) {
+    fab.textContent = '👆 返回人體穴位圖';
+    fab.classList.add('back-top');
+  } else {
+    fab.textContent = `👇 查看「${pt ? pt.name : '本穴'}」找穴與跟練`;
+    fab.classList.remove('back-top');
+  }
+}
 
 // 動態更新畫布底部保健參考免責與視圖安全提醒（P1-2）
 function updateSafetyDisclaimerUI() {
@@ -181,8 +197,8 @@ function renderBodyCanvas() {
   updateSafetyDisclaimerUI();
 }
 
-// 選取穴位並更新右側教學面板（修復 P0-5：手動跳出處方連播時同步關閉 isPlaying 並保留分享網址參數）
-function selectAcupoint(pointId, autoSwitchViewIfNeeded = false, keepTimerIfPlaylist = false) {
+// 選取穴位並更新右側教學面板（支援 popstate 歷史同步 + 手機版浮動導引 + 全螢幕 Zen Mode 同步）
+function selectAcupoint(pointId, autoSwitchViewIfNeeded = false, keepTimerIfPlaylist = false, { pushHistory = true } = {}) {
   const point = ACUPOINTS.find((p) => p.id === pointId);
   if (!point) return;
 
@@ -208,8 +224,10 @@ function selectAcupoint(pointId, autoSwitchViewIfNeeded = false, keepTimerIfPlay
   applySvgZoomForPoint(point);
   renderInspector(point);
   updatePlaylistBannerUI();
+  updateMobileJumpFabUI();
+  refreshZenModePoint();
   const activePresetObj = getAllPresets().find((p) => p.id === state.activePresetId) || null;
-  syncUrlWithState(activePresetObj);
+  syncUrlWithState(activePresetObj, { push: pushHistory });
 }
 
 // 針對選中穴位自動將全身畫布局部放大聚焦
@@ -601,6 +619,24 @@ function renderInspector(point) {
   document.getElementById('locBoneTip').textContent = `📍 關鍵骨縫地標：${point.location.boneTip}`;
   document.getElementById('locCunRef').textContent = `📏 比例尺基準：${point.location.cunReference}`;
   document.getElementById('locAnatomical').textContent = `標準解剖定位：${point.location.anatomical}`;
+
+  // 🆚 若本穴屬於易混淆鄰近穴位群組，顯示一鍵並排 PK 對比按鈕（P2-2）
+  const compareBtn = document.getElementById('comparePointBtn');
+  if (compareBtn) {
+    const confGroup = getConfusionGroupForPoint(point.id);
+    if (confGroup) {
+      const peers = confGroup.points
+        .filter((id) => id !== point.id)
+        .map((id) => ACUPOINTS.find((p) => p.id === id)?.name)
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(' / ');
+      compareBtn.textContent = `🆚 易混鄰穴對比：與「${peers}」並排區分 →`;
+      compareBtn.style.display = 'inline-block';
+    } else {
+      compareBtn.style.display = 'none';
+    }
+  }
 
   // Tab 2: 如何按揉
   document.getElementById('guideTechnique').textContent = `【手法】${point.massageGuide.technique}`;
@@ -1230,7 +1266,8 @@ function closeAllModals() {
   if (isArModalOpen()) {
     closeArModal();
   }
-  ['settingsModal', 'presetEditorModal', 'symptomWizardModal', 'directoryModal', 'painHistoryModal'].forEach((id) => {
+  closeZenMode();
+  ['settingsModal', 'presetEditorModal', 'symptomWizardModal', 'directoryModal', 'painHistoryModal', 'compareModal'].forEach((id) => {
     document.getElementById(id)?.classList.remove('open');
   });
 }
@@ -1857,6 +1894,77 @@ function bindEvents() {
     openArModal(state.selectedPointId);
   });
 
+  // 🆚 易混淆鄰近穴位並排 PK 對照（P2-2）
+  document.getElementById('comparePointBtn')?.addEventListener('click', () => {
+    openPointCompareModal(state.selectedPointId, ACUPOINTS, (pid) => {
+      selectAcupoint(pid, true);
+    });
+  });
+
+  // 🧘 全螢幕沉浸跟練模式（Zen Mode，P2-1）
+  document.getElementById('openZenModeBtn')?.addEventListener('click', () => {
+    openZenMode({
+      getAllPoints: () => ACUPOINTS,
+      onToggleTimer: () => toggleTimer(),
+      onSwitchSide: triggerManualSwitchSide,
+      onNext: () => handleVoiceOrKeyboardAction('next'),
+      onPrev: () => handleVoiceOrKeyboardAction('prev'),
+      onRecordPain: recordPainSensation
+    });
+  });
+
+  // 📱 手機版雙向智慧懸浮導引膠囊（畫布看詳情 ↔ 詳情回人體圖，P1-1）
+  const mobileFab = document.getElementById('mobileJumpFab');
+  const inspectorCard = document.getElementById('inspectorCard');
+  if (mobileFab && inspectorCard) {
+    mobileFab.addEventListener('click', () => {
+      if (isMobileViewingInspector) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        inspectorCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+
+    if ('IntersectionObserver' in window) {
+      const obs = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          isMobileViewingInspector = !!entry?.isIntersecting && entry.boundingClientRect.top < window.innerHeight * 0.65;
+          updateMobileJumpFabUI();
+        },
+        { threshold: [0, 0.15, 0.35] }
+      );
+      obs.observe(inspectorCard);
+    }
+  }
+
+  // ⏪ 瀏覽器上一頁／下一頁歷史同步（P1-2）
+  window.addEventListener('popstate', () => {
+    const deep = readDeepLinkFromUrl(ACUPOINTS);
+    if (deep.view) {
+      state.currentView = deep.view;
+      updateViewTabButtons();
+    }
+    if (deep.sharedPreset) {
+      sharedTempPreset = deep.sharedPreset;
+      renderPresetRow();
+      state.activePresetId = deep.sharedPreset.id;
+      state.highlightedIds = new Set(deep.sharedPreset.points);
+    } else if (deep.presetId) {
+      const preset = getAllPresets().find((p) => p.id === deep.presetId);
+      if (preset) {
+        state.activePresetId = preset.id;
+        state.highlightedIds = new Set(preset.points);
+        renderPresetRow();
+      }
+    } else {
+      state.activePresetId = null;
+      state.highlightedIds.clear();
+      renderPresetRow();
+    }
+    selectAcupoint(deep.pointId || 'LI4', !deep.view, false, { pushHistory: false });
+  });
+
   initArControls((newPointId) => {
     selectAcupoint(newPointId, true);
   });
@@ -1869,7 +1977,8 @@ window.addEventListener('DOMContentLoaded', () => {
   initTimerDeps({
     getAllPoints: () => ACUPOINTS,
     selectAcupoint,
-    updatePlaylistBannerUI
+    updatePlaylistBannerUI,
+    onPointChanged: refreshZenModePoint
   });
   initThemeListener();
   startReminderScheduler();
@@ -1900,7 +2009,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 安全回退：若分享處方 ID 在本機不存在，仍正常顯示穴位而不留空白殼（修復 P0-6）
   if (!handledPreset) {
-    selectAcupoint(deep.pointId || 'LI4', !deep.view);
+    selectAcupoint(deep.pointId || 'LI4', !deep.view, false, { pushHistory: false });
   }
 
   registerServiceWorkerWithUpdates(() => {

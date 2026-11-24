@@ -81,9 +81,45 @@ export const AR_SUPPORTED_POINTS = {
 };
 
 let visionModule = null;
+let visionResolver = null;
 let handLandmarker = null;
 let faceLandmarker = null;
 let poseLandmarker = null;
+
+// 相容舊版 iOS Safari (<16) 與舊 WebView 的圓角矩形繪製輔助（P0-4）
+function safeRoundRect(ctx, x, y, w, h, r = 6) {
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    const rad = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+    ctx.moveTo(x + rad, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rad);
+    ctx.arcTo(x + w, y + h, x, y + h, rad);
+    ctx.arcTo(x, y + h, x, y, rad);
+    ctx.arcTo(x, y, x + w, y, rad);
+    ctx.closePath();
+  }
+}
+
+// GPU 優先，若裝置 WebGL2 / GPU delegate 失敗則自動降級至 CPU（P0-3）
+async function createLandmarkerWithFallback(LandmarkerClass, vision, modelUrl, extraOptions, onStatusUpdate) {
+  try {
+    return await LandmarkerClass.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: modelUrl, delegate: 'GPU' },
+      runningMode: 'VIDEO',
+      ...extraOptions
+    });
+  } catch (gpuErr) {
+    console.warn('[AR] GPU delegate unavailable, falling back to CPU:', gpuErr);
+    if (onStatusUpdate) onStatusUpdate('⚡ 裝置未支援 WebGL GPU 加速，已自動切換至相容 CPU 引擎...');
+    return await LandmarkerClass.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' },
+      runningMode: 'VIDEO',
+      ...extraOptions
+    });
+  }
+}
 
 const arState = {
   isOpen: false,
@@ -124,51 +160,57 @@ async function ensureDetectorLoaded(mode, onStatusUpdate) {
   }
 
   const { FilesetResolver, HandLandmarker, FaceLandmarker, PoseLandmarker } = visionModule;
-  const vision = await FilesetResolver.forVisionTasks(WASM_PATH);
+  if (!visionResolver) {
+    visionResolver = await FilesetResolver.forVisionTasks(WASM_PATH);
+  }
+  const vision = visionResolver;
 
   if (mode === 'hand' && !handLandmarker) {
-    onStatusUpdate('正在啟動 iPhone GPU 手部 21 骨骼點模型...');
-    handLandmarker = await HandLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: HAND_MODEL_URL,
-        delegate: 'GPU'
+    onStatusUpdate('正在啟動手部 21 骨骼點模型...');
+    handLandmarker = await createLandmarkerWithFallback(
+      HandLandmarker,
+      vision,
+      HAND_MODEL_URL,
+      {
+        numHands: 2,
+        minHandDetectionConfidence: 0.5,
+        minHandPresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5
       },
-      runningMode: 'VIDEO',
-      numHands: 2,
-      minHandDetectionConfidence: 0.5,
-      minHandPresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
+      onStatusUpdate
+    );
   }
 
   if (mode === 'face' && !faceLandmarker) {
-    onStatusUpdate('正在啟動 iPhone GPU 臉部 478 網格點模型...');
-    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: FACE_MODEL_URL,
-        delegate: 'GPU'
+    onStatusUpdate('正在啟動臉部 478 網格點模型...');
+    faceLandmarker = await createLandmarkerWithFallback(
+      FaceLandmarker,
+      vision,
+      FACE_MODEL_URL,
+      {
+        numFaces: 1,
+        minFaceDetectionConfidence: 0.5,
+        minFacePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5
       },
-      runningMode: 'VIDEO',
-      numFaces: 1,
-      minFaceDetectionConfidence: 0.5,
-      minFacePresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
+      onStatusUpdate
+    );
   }
 
   if ((mode === 'leg' || mode === 'back' || mode === 'torso') && !poseLandmarker) {
-    onStatusUpdate('正在啟動 iPhone GPU 身體 33 點姿態模型...');
-    poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: POSE_MODEL_URL,
-        delegate: 'GPU'
+    onStatusUpdate('正在啟動身體 33 點姿態模型...');
+    poseLandmarker = await createLandmarkerWithFallback(
+      PoseLandmarker,
+      vision,
+      POSE_MODEL_URL,
+      {
+        numPoses: 1,
+        minPoseDetectionConfidence: 0.5,
+        minPosePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5
       },
-      runningMode: 'VIDEO',
-      numPoses: 1,
-      minPoseDetectionConfidence: 0.5,
-      minPosePresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
+      onStatusUpdate
+    );
   }
 }
 
@@ -844,8 +886,7 @@ function drawGuidedFootOverlay(ctx, W, H, targetPointId, pulse, footSide = 'righ
 
   // (H) 眼耳・斜方肌反射區 (二至五趾下方橫帶)
   const isEyeTrapTarget = targetPointId === 'REFLEX-EYE-TRAP';
-  ctx.beginPath();
-  ctx.roundRect(0, -halfH * 0.76, halfW * 0.85, halfH * 0.10, 6);
+  safeRoundRect(ctx, 0, -halfH * 0.76, halfW * 0.85, halfH * 0.10, 6);
   ctx.fillStyle = isEyeTrapTarget
     ? `rgba(0, 150, 136, ${0.6 + 0.2 * Math.sin(pulse)})`
     : 'rgba(0, 150, 136, 0.2)';
@@ -971,8 +1012,7 @@ function drawGuidedEarOverlay(ctx, W, H, targetPointId, pulse, earSide = 'right'
       ctx.font = 'bold 13px "PingFang TC", "Microsoft JhengHei", sans-serif';
       const tw = ctx.measureText(ep.name).width;
       ctx.fillStyle = 'rgba(184, 61, 46, 0.92)';
-      ctx.beginPath();
-      ctx.roundRect(14, -12, tw + 14, 22, 6);
+      safeRoundRect(ctx, 14, -12, tw + 14, 22, 6);
       ctx.fill();
       ctx.fillStyle = '#FFF';
       ctx.fillText(ep.name, 21, 4);
@@ -1043,8 +1083,7 @@ function drawAcupointMarker(ctx, x, y, label, isPrimary, pulseScale = 1) {
   const boxY = -12;
 
   ctx.fillStyle = isPrimary ? 'rgba(184, 61, 46, 0.92)' : 'rgba(42, 72, 58, 0.85)';
-  ctx.beginPath();
-  ctx.roundRect(boxX, boxY - 12, textWidth + 14, 22, 6);
+  safeRoundRect(ctx, boxX, boxY - 12, textWidth + 14, 22, 6);
   ctx.fill();
 
   ctx.fillStyle = '#FFF';
@@ -1698,8 +1737,7 @@ async function saveArSnapshot() {
   octx.font = 'bold 14px "PingFang TC", "Microsoft JhengHei", sans-serif';
   const tw = octx.measureText(stamp).width;
   octx.fillStyle = 'rgba(20, 32, 26, 0.72)';
-  octx.beginPath();
-  octx.roundRect(W - tw - 28, H - 36, tw + 18, 26, 6);
+  safeRoundRect(octx, W - tw - 28, H - 36, tw + 18, 26, 6);
   octx.fill();
   octx.fillStyle = '#FAF7F0';
   octx.fillText(stamp, W - tw - 19, H - 18);

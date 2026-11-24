@@ -116,7 +116,11 @@ export function initVoiceAndKeyboardControls({ onAction }) {
         activeEl.isContentEditable);
     if (isTyping) return;
 
+    // 焦點停留在 SVG 穴位點時，讓位給 gestures.js 的鍵盤導覽，避免打架（P0-2）
+    if (activeEl?.classList?.contains('acupoint-node')) return;
+
     if (e.code === 'Space') {
+      if (activeEl && (activeEl.tagName === 'BUTTON' || activeEl.tagName === 'A')) return;
       e.preventDefault();
       if (dispatchAction) dispatchAction('toggleTimer', { source: 'keyboard' });
     } else if (e.code === 'ArrowRight') {

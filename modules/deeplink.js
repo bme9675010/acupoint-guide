@@ -56,9 +56,10 @@ export function readDeepLinkFromUrl(allPoints) {
   }
 }
 
-export function syncUrlWithState(activePresetObj = null) {
+export function syncUrlWithState(activePresetObj = null, { push = false } = {}) {
   try {
-    const url = new URL(window.location.href);
+    const currentHref = window.location.href;
+    const url = new URL(currentHref);
     if (state.selectedPointId) {
       url.searchParams.set('p', state.selectedPointId);
     }
@@ -85,11 +86,13 @@ export function syncUrlWithState(activePresetObj = null) {
       url.searchParams.delete('pts');
       url.searchParams.delete('title');
     }
-    window.history.replaceState(
-      { p: state.selectedPointId, v: state.currentView, preset: state.activePresetId },
-      '',
-      url
-    );
+    const nextHref = url.toString();
+    const historyState = { p: state.selectedPointId, v: state.currentView, preset: state.activePresetId };
+    if (push && nextHref !== currentHref) {
+      window.history.pushState(historyState, '', url);
+    } else {
+      window.history.replaceState(historyState, '', url);
+    }
   } catch (_) {}
 }
 

@@ -239,6 +239,9 @@
           <p id="locBoneTip" style="font-weight: 600; color: var(--herb-deep); margin-bottom: 4px;"></p>
           <p id="locCunRef" style="font-size: 0.85rem; color: var(--ink-dark); margin-bottom: 4px;"></p>
           <p id="locAnatomical" style="font-size: 0.8rem; color: var(--ink-muted);"></p>
+          <button type="button" id="comparePointBtn" class="pairing-Jump-btn" style="display:none; margin-top:8px;" title="並排比較同部位容易搞混的鄰近穴位">
+            🆚 與易混鄰穴對比 →
+          </button>
         </div>
       </div>
 
@@ -291,6 +294,7 @@
           <div class="timer-btn-row">
             <button type="button" id="startTimerBtn" class="btn-primary-timer">開始跟練按揉</button>
             <button type="button" id="resetTimerBtn" class="btn-secondary-timer">重置</button>
+            <button type="button" id="openZenModeBtn" class="btn-secondary-timer" title="開啟深色全螢幕大字呼吸光圈，適合放桌上遠看或躺床助眠">⛶ 沉浸全螢幕</button>
           </div>
 
           <div class="handsfree-hints">
@@ -541,6 +545,11 @@
       </div>
     </div>
   </div>
+
+  <!-- 📱 手機版雙向智慧懸浮導引膠囊（畫布看詳情 ↔ 詳情回人體圖，P1-1） -->
+  <button type="button" id="mobileJumpFab" class="mobile-jump-fab" aria-label="跳轉至穴位詳情或返回人體圖">
+    👇 查看「合谷」詳情
+  </button>
 
   <script type="module" src="./app.js"></script>
 </body>

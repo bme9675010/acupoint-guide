@@ -14,12 +14,14 @@ let movedDuringPointer = false;
 export function setCurrentViewBox(x, y, w, h) {
   viewBoxState = { x, y, w, h };
   const svg = document.getElementById('bodySvg');
-  if (svg) {
-    svg.setAttribute('viewBox', `${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
-  }
-  const resetBtn = document.getElementById('resetZoomFloatingBtn');
   const isZoomed = w < BASE_W - 5;
   state.isZoomedIn = isZoomed;
+  if (svg) {
+    svg.setAttribute('viewBox', `${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
+    // 僅於局部放大時接管單指平移，未放大時保留手機原生垂直滑動捲頁（P0-1）
+    svg.classList.toggle('zoomed-in', isZoomed);
+  }
+  const resetBtn = document.getElementById('resetZoomFloatingBtn');
   if (resetBtn) {
     resetBtn.style.display = isZoomed ? 'inline-block' : 'none';
   }
@@ -70,6 +72,7 @@ export function initCanvasGestures() {
     if (activePointers.size === 1) {
       lastPanPoint = { x: e.clientX, y: e.clientY };
     } else if (activePointers.size === 2) {
+      svg.classList.add('pinching');
       const pts = [...activePointers.values()];
       initialPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       initialPinchBox = { ...viewBoxState };
@@ -123,6 +126,7 @@ export function initCanvasGestures() {
   const clearPointer = (e) => {
     activePointers.delete(e.pointerId);
     if (activePointers.size < 2) {
+      svg.classList.remove('pinching');
       initialPinchDist = null;
       initialPinchBox = null;
     }
@@ -143,21 +147,24 @@ export function wasDraggingCanvas() {
   return movedDuringPointer;
 }
 
-// ⌨️ 綁定 SVG 穴位點鍵盤操作（Enter / Space 選取、左右方向鍵切換穴位）
+// ⌨️ 綁定 SVG 穴位點鍵盤操作（Enter / Space 選取、方向鍵移動焦點；阻止冒泡避免誤觸全域計時快捷鍵 P0-2）
 export function bindNodeKeyboardEvents(svg, onSelectPoint) {
   const nodes = [...svg.querySelectorAll('.acupoint-node[tabindex="0"]')];
   nodes.forEach((node, idx) => {
     node.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
+        e.stopPropagation();
         const pid = node.getAttribute('data-point-id');
         if (pid) onSelectPoint(pid);
       } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault();
+        e.stopPropagation();
         const next = nodes[(idx + 1) % nodes.length];
         next?.focus();
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault();
+        e.stopPropagation();
         const prev = nodes[(idx - 1 + nodes.length) % nodes.length];
         prev?.focus();
       }

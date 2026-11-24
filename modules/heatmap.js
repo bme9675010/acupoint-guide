@@ -1,4 +1,75 @@
-// 📊 近 30 天經絡痛感體質熱力分佈條（視覺化呈現各經絡「劇痛氣滯 / 空軟氣虛 / 微痠通暢」比例）
+// 📊 近 30 天經絡痛感體質熱力分佈條 + 近 28 天養生打卡日曆熱力格（P2-3）
+
+function formatLocalDayKey(ts) {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function build28DayCalendarHtml(painLogs) {
+  const logs = Array.isArray(painLogs) ? painLogs : [];
+  const byDay = new Map();
+
+  logs.forEach((l) => {
+    if (!l?.timestamp) return;
+    const key = formatLocalDayKey(l.timestamp);
+    if (!byDay.has(key)) byDay.set(key, { count: 0, sharp: 0, empty: 0, smooth: 0 });
+    const b = byDay.get(key);
+    b.count += 1;
+    if (l.painType === 'sharp') b.sharp += 1;
+    else if (l.painType === 'empty') b.empty += 1;
+    else b.smooth += 1;
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayKey = formatLocalDayKey(today.getTime());
+
+  const cells = [];
+  let activeDays = 0;
+  for (let offset = 27; offset >= 0; offset--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - offset);
+    const key = formatLocalDayKey(d.getTime());
+    const info = byDay.get(key);
+    const isToday = key === todayKey;
+    const labelDate = `${d.getMonth() + 1}/${d.getDate()}`;
+
+    let cls = 'cal-cell';
+    let tip = `${labelDate}：尚未打卡`;
+    if (info && info.count > 0) {
+      activeDays += 1;
+      const dominant =
+        info.sharp >= info.empty && info.sharp >= info.smooth
+          ? 'sharp'
+          : info.empty >= info.smooth
+            ? 'empty'
+            : 'smooth';
+      const domLabel = dominant === 'sharp' ? '偏氣滯痠痛' : dominant === 'empty' ? '偏氣虛空軟' : '微痠通暢';
+      cls += ` active ${dominant}`;
+      if (info.count >= 3) cls += ' high';
+      tip = `${labelDate}：按導 ${info.count} 次（主手感：${domLabel}）`;
+    }
+    if (isToday) cls += ' today';
+
+    cells.push(
+      `<span class="${cls}" title="${tip}" aria-label="${tip}">${info && info.count > 0 ? info.count : ''}</span>`
+    );
+  }
+
+  return `
+    <div class="checkin-calendar-box">
+      <div class="heatmap-header">
+        <strong>📅 近 28 天養生打卡日曆</strong>
+        <span class="heatmap-count">出勤 ${activeDays} / 28 天</span>
+      </div>
+      <div class="checkin-calendar-grid">${cells.join('')}</div>
+    </div>
+  `;
+}
+
 export function buildMeridianHeatmapHtml(painLogs) {
   if (!Array.isArray(painLogs) || painLogs.length === 0) return '';
 
@@ -9,7 +80,6 @@ export function buildMeridianHeatmapHtml(painLogs) {
   const statsMap = {};
   source.forEach((log) => {
     const rawMeridian = log.meridian || '其他經絡';
-    // 取簡短經絡名稱方便視覺化對齊
     const shortName = rawMeridian.replace(/（.*?）/g, '').slice(0, 7);
     if (!statsMap[shortName]) {
       statsMap[shortName] = { sharp: 0, empty: 0, smooth: 0, total: 0 };
@@ -46,6 +116,7 @@ export function buildMeridianHeatmapHtml(painLogs) {
     .join('');
 
   return `
+    ${build28DayCalendarHtml(painLogs)}
     <div class="meridian-heatmap-box">
       <div class="heatmap-header">
         <strong>📊 近 30 天經絡體感熱力圖</strong>
