@@ -134,6 +134,7 @@ const arState = {
   facingMode: 'environment', // 手/腿/背/腹/腳預設後鏡頭('environment')，臉部/耳部預設前鏡頭('user')
   footSide: 'right',         // 'left' | 'right' 腳底引導框左右腳切換
   earSide: 'right',          // 'left' | 'right' 耳廓引導框左右耳切換
+  zoomLevel: 1,              // 🔍 定格／即時放大倍率：1 | 1.5 | 2
   sessionToken: 0,           // 防併發啟動／中途關閉造成相機串流洩漏
   stream: null,
   rafId: null,
@@ -1687,10 +1688,24 @@ export function isArModalOpen() {
   return !!arState.isOpen;
 }
 
+function applyArZoomUI() {
+  const stage = document.getElementById('arZoomStage');
+  const btn = document.getElementById('zoomArBtn');
+  if (stage) {
+    stage.style.transform = arState.zoomLevel === 1 ? 'none' : `scale(${arState.zoomLevel})`;
+  }
+  if (btn) {
+    btn.textContent = arState.zoomLevel === 1 ? '🔍 放大 1x' : `🔍 放大 ${arState.zoomLevel}x`;
+    btn.classList.toggle('active', arState.zoomLevel > 1);
+  }
+}
+
 export function closeArModal() {
   arState.sessionToken += 1;
   arState.isOpen = false;
   arState.isFrozen = false;
+  arState.zoomLevel = 1;
+  applyArZoomUI();
   if (arState.countdownTimer) {
     clearInterval(arState.countdownTimer);
     arState.countdownTimer = null;
@@ -1809,10 +1824,16 @@ export function initArControls(onSelectPointInMainApp) {
   // 綁定關閉按鈕
   document.getElementById('closeArModalBtn')?.addEventListener('click', closeArModal);
 
-  // 綁定定格、3 秒倒數定格與保存定格照按鈕
+  // 綁定定格、3 秒倒數定格、放大倍率與保存定格照按鈕
   document.getElementById('freezeArBtn')?.addEventListener('click', toggleFreezeFrame);
   document.getElementById('countdownFreezeBtn')?.addEventListener('click', startCountdownFreeze);
   document.getElementById('saveArSnapBtn')?.addEventListener('click', saveArSnapshot);
+  document.getElementById('zoomArBtn')?.addEventListener('click', () => {
+    const levels = [1, 1.5, 2];
+    const nextIdx = (levels.indexOf(arState.zoomLevel) + 1) % levels.length;
+    arState.zoomLevel = levels[nextIdx];
+    applyArZoomUI();
+  });
 
   // 綁定前後鏡頭切換按鈕
   document.getElementById('flipCameraBtn')?.addEventListener('click', async () => {

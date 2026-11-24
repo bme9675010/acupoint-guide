@@ -1,6 +1,7 @@
 // 📋 全站 56 穴經絡與部位目錄總表抽屜（支援即時過濾、分組折疊與一鍵跳轉）
 import { state } from './state.js';
 import { escapeHtml } from './ui.js';
+import { matchesNormalizedQuery } from './searchNorm.js';
 
 function getRegionGroupLabel(pt) {
   if (pt.id.startsWith('PED-') || pt.id === 'GB39' || pt.id === 'ST2') return '👶 小兒推拿與青少年轉骨護眼';
@@ -35,20 +36,19 @@ export function openDirectoryModal(allPoints, onSelectPoint) {
   let filterQuery = '';
 
   const renderBody = () => {
-    const q = filterQuery.trim().toLowerCase();
     const filtered = allPoints.filter((pt) => {
-      if (!q) return true;
-      const hay = [
-        pt.name,
-        pt.id,
-        pt.pinyin,
-        pt.meridian,
-        pt.location?.quickFind || '',
-        ...(pt.benefits?.symptoms || [])
-      ]
-        .join(' ')
-        .toLowerCase();
-      return hay.includes(q);
+      if (!filterQuery.trim()) return true;
+      return matchesNormalizedQuery(
+        [
+          pt.name,
+          pt.id,
+          pt.pinyin,
+          pt.meridian,
+          pt.location?.quickFind || '',
+          ...(pt.benefits?.symptoms || [])
+        ],
+        filterQuery
+      );
     });
 
     const groups = new Map();

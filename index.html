@@ -177,7 +177,7 @@
           </div>
           <div class="point-meridian-bar">
             <span id="pointMeridian" class="meridian-pill">手陽明大腸經</span>
-            <span id="pointSideBadge" class="meridian-pill" style="background: rgba(184, 61, 46, 0.12); color: #8A2519; font-weight: 700;">👐 左右對稱雙穴（雙側皆可按）</span>
+            <span id="pointSideBadge" class="meridian-pill side-badge side-badge-green">👐 左右對稱雙穴（雙側皆可按）</span>
             <span id="pointAttr">原穴・四總穴</span>
           </div>
         </div>
@@ -187,6 +187,9 @@
           </button>
           <button type="button" id="sharePointBtn" class="fav-point-btn" title="複製或分享此穴位的專屬連結給親友">
             🔗 分享
+          </button>
+          <button type="button" id="printPointBtn" class="fav-point-btn" title="列印或另存 PDF 本穴完整圖解與食療單，方便貼牆或給長輩參考">
+            🖨️ 列印
           </button>
           <button type="button" id="inspectorArBtn" class="inspector-ar-btn">
             📷 AR 實景對穴
@@ -446,6 +449,7 @@
           <button type="button" id="earSideBtn" class="ar-ctrl-btn" style="display:none;" title="切換左耳或右耳全息投影">👂 耳朵：右耳</button>
           <button type="button" id="preloadArPackBtn" class="ar-ctrl-btn" title="預先將 AI 手部、臉部與身體模型存入手機快取，離線也能秒開 AR">📦 離線包</button>
           <button type="button" id="freezeArBtn" class="ar-freeze-btn">❄️ 定格畫面</button>
+          <button type="button" id="zoomArBtn" class="ar-ctrl-btn" title="循環切換 1x / 1.5x / 2x 放大檢視，定格後看清耳朵或腳底紅點落點">🔍 放大 1x</button>
           <button type="button" id="saveArSnapBtn" class="ar-ctrl-btn" title="將當前鏡頭畫面與 AR 穴位紅點存成 PNG 圖片（適合家人幫拍背部或保存對位照）">💾 存定格照</button>
           <button type="button" id="countdownFreezeBtn" class="ar-ctrl-btn">⏱️ 3秒自拍定格</button>
           <button type="button" id="flipCameraBtn" class="ar-ctrl-btn">🔄 翻轉鏡頭</button>
@@ -458,8 +462,10 @@
       </div>
 
       <div class="ar-viewport">
-        <video id="arVideo" class="ar-video" playsinline webkit-playsinline autoplay muted></video>
-        <canvas id="arCanvas" class="ar-canvas"></canvas>
+        <div id="arZoomStage" class="ar-zoom-stage">
+          <video id="arVideo" class="ar-video" playsinline webkit-playsinline autoplay muted></video>
+          <canvas id="arCanvas" class="ar-canvas"></canvas>
+        </div>
         <div id="arCountdownOverlay" class="ar-countdown-overlay" style="display: none;">3</div>
       </div>
 

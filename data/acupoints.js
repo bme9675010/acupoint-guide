@@ -64,6 +64,41 @@ export const SYMPTOM_PRESETS = [
     subtitle: '腳底反射區刮按、引火歸元、深度睡眠',
     icon: '🦶',
     points: ['REFLEX-KIDNEY', 'KI1', 'REFLEX-STOMACH', 'EX-LE-SHIMIAN']
+  },
+  {
+    id: 'liver-fire-detox',
+    title: '熬夜爆肝・降火疏鬱方',
+    subtitle: '情緒緊繃胸悶、口苦嘴破、加班肝火旺',
+    icon: '🔥',
+    points: ['LR3', 'CV17', 'LI11', 'REFLEX-LIVER', 'EAR-LIVER']
+  },
+  {
+    id: 'lower-back-sciatica',
+    title: '久站閃腰・下背坐骨舒緩方',
+    subtitle: '久坐久站腰痛、腿後僵緊、閃到腰保養',
+    icon: '🦴',
+    points: ['BL40', 'BL60', 'BL23', 'SI3']
+  },
+  {
+    id: 'damp-phlegm-bowel',
+    title: '祛濕消腫・通便化痰方',
+    subtitle: '排便不順宿便、痰多頭重、濕氣重胃火',
+    icon: '💧',
+    points: ['ST40', 'ST25', 'SP9', 'EX-LE-LINEITING']
+  },
+  {
+    id: 'fever-allergy-guard',
+    title: '提神醒腦・清熱抗敏方',
+    subtitle: '腦霧耳鳴、換季過敏、小兒輕微退熱',
+    icon: '🌡️',
+    points: ['GV20', 'TE17', 'GV14', 'PED-TIANHESHI', 'EAR-ADRENAL']
+  },
+  {
+    id: 'sole-reflex-full',
+    title: '足底全區・頭肩心腎舒壓',
+    subtitle: '大腦頭頸、斜方肌、左心右肝與骨盆調理',
+    icon: '👣',
+    points: ['REFLEX-BRAIN', 'REFLEX-EYE-TRAP', 'REFLEX-HEART', 'REFLEX-LIVER', 'REFLEX-PELVIS']
   }
 ];
 

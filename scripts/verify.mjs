@@ -188,6 +188,32 @@ const calHtml = heatmapMod.build28DayCalendarHtml([{ timestamp: Date.now(), pain
 const calCount = (calHtml.match(/class="cal-cell/g) || []).length;
 assert(calCount === 28, `近 28 天打卡日曆格產出正確 (${calCount} 格)`);
 
+// 9. 本輪效能瘦身、暗黑對比、孤兒穴位消滅、簡繁拼音搜尋與列印檢驗
+assert(!/^import .*arFinder\.js/m.test(appCode), 'arFinder.js 已改為按需懶載入，首屏零負擔');
+const appLineCount = appCode.split(/\r?\n/).length;
+assert(appLineCount < 1400, `app.js 模組拆分瘦身完成 (2019 → ${appLineCount} 行)`);
+
+const inspectorCode = fs.readFileSync(path.join(root, 'modules/inspector.js'), 'utf8');
+assert(!inspectorCode.includes('#1D4734') && !inspectorCode.includes('#7A4F13'), 'pointSideBadge 已移除硬編碼深色 inline style');
+
+const inAnyPreset = new Set(SYMPTOM_PRESETS.flatMap((p) => p.points));
+const orphanPoints = ACUPOINTS.filter((p) => !inAnyPreset.has(p.id)).map((p) => p.id);
+assert(orphanPoints.length === 0, `內建 ${SYMPTOM_PRESETS.length} 組處方達成 56 穴 100% 覆蓋 (孤兒穴: ${orphanPoints.join(', ') || '0'})`);
+
+const normMod = await import(pathToFileURL(path.join(root, 'modules/searchNorm.js')).href);
+assert(
+  normMod.matchesNormalizedQuery(['合谷', 'Hé Gǔ'], 'hegu') &&
+  normMod.matchesNormalizedQuery(['風池', '湧泉', '內關'], '风池') &&
+  normMod.matchesNormalizedQuery(['湧泉', 'KI1'], '涌泉'),
+  '搜尋標準化支援無聲調拼音 (hegu) 與簡體字 (风池/涌泉)'
+);
+
+assert(
+  cssCode.includes('body.modal-open') && cssCode.includes('@media print') && cssCode.includes('[data-theme="dark"] .side-badge-green'),
+  'CSS 具備彈窗捲動鎖定、夜間高對比徽章與 @media print 列印樣式'
+);
+assert(arCode.includes('zoomLevel') && html.includes('id="zoomArBtn"'), 'AR 具備 1x/1.5x/2x 放大檢視功能');
+
 console.log('\n========================================');
 if (failures === 0) {
   console.log('🎉 ALL CHECKS PASSED (0 failures)');

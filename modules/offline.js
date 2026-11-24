@@ -1,5 +1,9 @@
-// 📦 離線能力：AR 模型離線包預載 + Service Worker 更新提示
-import { VISION_CDN, WASM_PATH, HAND_MODEL_URL, FACE_MODEL_URL, POSE_MODEL_URL } from '../arFinder.js';
+// 📦 離線能力：AR 模型離線包預載 + Service Worker 更新提示（獨立宣告常數，避免首屏間接載入 75KB arFinder.js）
+const VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const WASM_PATH = `${VISION_CDN}/wasm`;
+const HAND_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+const FACE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+const POSE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 
 // 必須與 sw.js 的 AR_CACHE 相同；獨立於 CACHE_NAME，升版時不會被清掉
 export const AR_CACHE = 'acupoint-ar-v1';
