@@ -27,11 +27,13 @@ export async function releaseWakeLock() {
   if (badge) badge.style.display = 'none';
 }
 
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && state.timer.running) {
-    requestWakeLock();
-  }
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.timer.running) {
+      requestWakeLock();
+    }
+  });
+}
 
 // Web Audio API 頌缽與木魚溫潤音效合成器（完美解決 iPhone Safari 無震動 API 的問題）
 let audioCtx = null;
@@ -93,8 +95,20 @@ export function playSingingBowl(type = 'press') {
   }
 }
 
+// 🎙️ TTS 語音播報回音防護狀態（避免外放語音被免手碰麥克風誤收觸發指令）
+let ttsSpeaking = false;
+let ttsMuteUntilMs = 0;
+
+export function isTtsSpeakingOrCooling() {
+  if (ttsSpeaking) return true;
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+    return true;
+  }
+  return Date.now() < ttsMuteUntilMs;
+}
+
 export function speakGuide(text) {
-  const soundEnabled = document.getElementById('soundToggle')?.checked;
+  const soundEnabled = document.getElementById('soundToggle')?.checked ?? state.settings?.soundEnabled ?? true;
   if (!soundEnabled || !('speechSynthesis' in window)) return;
   try {
     window.speechSynthesis.cancel();
@@ -103,8 +117,28 @@ export function speakGuide(text) {
     utter.rate = 0.96;
     utter.pitch = 0.95;
     utter.volume = 0.8;
+
+    const estMs = Math.max(1600, Math.min(8000, String(text || '').length * 240));
+    ttsSpeaking = true;
+    ttsMuteUntilMs = Date.now() + estMs + 900;
+
+    utter.onstart = () => {
+      ttsSpeaking = true;
+      ttsMuteUntilMs = Date.now() + estMs + 900;
+    };
+    utter.onend = () => {
+      ttsSpeaking = false;
+      ttsMuteUntilMs = Date.now() + 900;
+    };
+    utter.onerror = () => {
+      ttsSpeaking = false;
+      ttsMuteUntilMs = Date.now() + 400;
+    };
+
     window.speechSynthesis.speak(utter);
-  } catch (_) {}
+  } catch (_) {
+    ttsSpeaking = false;
+  }
 }
 
 // 📳 震動提示（Android Chrome 有效；iOS Safari 不支援 Vibration API，會靜默略過，由頌缽聲補位）

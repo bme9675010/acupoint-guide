@@ -1,5 +1,14 @@
-// 🔔 輕量 Toast 通知與彈窗輔助工具
+// 🔔 輕量 Toast 通知、HTML 跳脫防護與彈窗輔助工具
 let toastTimer = null;
+
+export function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export function showToast(message, durationMs = 2800) {
   let el = document.getElementById('appToast');

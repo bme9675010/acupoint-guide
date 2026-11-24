@@ -1,6 +1,6 @@
 // 🎙️ 免手觸控控制中心（Web Speech API 語音口令識別 + 鍵盤人體工學快捷鍵）
 import { showToast } from './ui.js';
-import { vibrate } from './audio.js';
+import { vibrate, isTtsSpeakingOrCooling } from './audio.js';
 
 let recognition = null;
 let isVoiceActive = false;
@@ -54,6 +54,9 @@ export function initVoiceAndKeyboardControls({ onAction }) {
       };
 
       recognition.onresult = (event) => {
+        // 避免手機外放的 TTS 引導語音被麥克風收回誤觸指令（P0-4）
+        if (isTtsSpeakingOrCooling()) return;
+
         const lastIndex = event.results.length - 1;
         const transcript = event.results[lastIndex][0].transcript;
         const matched = parseVoiceCommand(transcript);

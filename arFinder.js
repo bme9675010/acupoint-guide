@@ -98,6 +98,7 @@ const arState = {
   facingMode: 'environment', // 手/腿/背/腹/腳預設後鏡頭('environment')，臉部/耳部預設前鏡頭('user')
   footSide: 'right',         // 'left' | 'right' 腳底引導框左右腳切換
   earSide: 'right',          // 'left' | 'right' 耳廓引導框左右耳切換
+  sessionToken: 0,           // 防併發啟動／中途關閉造成相機串流洩漏
   stream: null,
   rafId: null,
   lastVideoTime: -1,
@@ -1105,6 +1106,7 @@ async function startArSession() {
   const canvas = document.getElementById('arCanvas');
   const statusEl = document.getElementById('arStatusText');
 
+  const myToken = ++arState.sessionToken;
   arState.isFrozen = false;
   arState.cachedHandLandmarks = null;
   arState.cachedFaceLandmarks = null;
@@ -1114,8 +1116,13 @@ async function startArSession() {
 
   try {
     await ensureDetectorLoaded(arState.mode, (msg) => {
-      statusEl.textContent = msg;
+      if (arState.isOpen && myToken === arState.sessionToken && statusEl) {
+        statusEl.textContent = msg;
+      }
     });
+
+    // 若使用者在載入模型中途關閉 AR 或已切換至下一個 session，立即中止
+    if (!arState.isOpen || myToken !== arState.sessionToken) return;
 
     statusEl.textContent = '正在開啟相機鏡頭...';
     let stream;
@@ -1132,6 +1139,12 @@ async function startArSession() {
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }
 
+    // 防止取得相機權限期間使用者已關掉視窗而造成背景相機串流洩漏（P0-3）
+    if (!arState.isOpen || myToken !== arState.sessionToken) {
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
     arState.stream = stream;
     video.srcObject = stream;
 
@@ -1140,6 +1153,10 @@ async function startArSession() {
     canvas.style.transform = isMirrored ? 'scaleX(-1)' : 'none';
 
     await video.play();
+    if (!arState.isOpen || myToken !== arState.sessionToken) {
+      stopCameraStream();
+      return;
+    }
 
     const modeLabels = {
       hand: '手部 21 骨骼點',
@@ -1155,7 +1172,9 @@ async function startArSession() {
     arState.lastVideoTime = -1;
     renderArLoop();
   } catch (err) {
-    statusEl.textContent = `⚠️ 無法啟動相機：${err.message || '請確認已允許瀏覽器相機權限'}`;
+    if (arState.isOpen && myToken === arState.sessionToken && statusEl) {
+      statusEl.textContent = `⚠️ 無法啟動相機：${err.message || '請確認已允許瀏覽器相機權限'}`;
+    }
   }
 }
 
@@ -1630,6 +1649,7 @@ export function isArModalOpen() {
 }
 
 export function closeArModal() {
+  arState.sessionToken += 1;
   arState.isOpen = false;
   arState.isFrozen = false;
   if (arState.countdownTimer) {
@@ -1639,6 +1659,8 @@ export function closeArModal() {
   const countdownOverlay = document.getElementById('arCountdownOverlay');
   if (countdownOverlay) countdownOverlay.style.display = 'none';
   stopCameraStream();
+  const video = document.getElementById('arVideo');
+  if (video) video.srcObject = null;
   document.getElementById('arModal')?.classList.remove('open');
 }
 

@@ -2300,6 +2300,316 @@ body {
   }
 }
 
+/* =========================================================
+   🔠 長輩大字體模式 + 安全免責條 + 節奏強度 + 筆記/歷史 + 56 穴總表
+   ========================================================= */
+html[data-font-scale="large"] {
+  font-size: 112%;
+}
+
+html[data-font-scale="xlarge"] {
+  font-size: 124%;
+}
+
+.font-scale-group {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.font-scale-btn.active {
+  background: var(--herb-deep) !important;
+  color: #FAF7F0 !important;
+  border-color: var(--herb-deep) !important;
+}
+
+.safety-disclaimer-bar {
+  margin-top: 8px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(196, 137, 59, 0.1);
+  border: 1px solid rgba(196, 137, 59, 0.28);
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.clinical-caution-box {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(184, 61, 46, 0.08);
+  border-left: 3px solid var(--cinnabar);
+  color: var(--ink-dark);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.rhythm-level-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.rhythm-level-label {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.rhythm-level-btn {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-ink);
+  background: var(--bg-card);
+  color: var(--ink-dark);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.rhythm-level-btn.active {
+  background: var(--herb-deep);
+  color: #FAF7F0;
+  border-color: var(--herb-deep);
+  font-weight: 600;
+}
+
+.pain-log-tools {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.point-note-status {
+  font-size: 0.74rem;
+  color: var(--herb-mid);
+}
+
+.point-note-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-ink);
+  background: var(--bg-parchment);
+  color: var(--ink-dark);
+  font-size: 0.84rem;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.point-note-input:focus {
+  outline: none;
+  border-color: var(--herb-deep);
+  box-shadow: 0 0 0 2px rgba(46, 79, 62, 0.15);
+}
+
+/* 📜 打卡歷史明細彈窗 */
+.history-log-list {
+  max-height: 54vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-log-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-parchment);
+  border: 1px solid var(--border-ink);
+}
+
+.history-log-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.history-log-info strong {
+  font-size: 0.85rem;
+  color: var(--ink-dark);
+}
+
+.history-log-meta {
+  font-size: 0.73rem;
+  color: var(--ink-muted);
+}
+
+.history-log-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.history-pain-pill {
+  font-size: 0.74rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.history-pain-pill.smooth {
+  background: rgba(62, 122, 93, 0.16);
+  color: var(--herb-deep);
+}
+
+.history-pain-pill.sharp {
+  background: rgba(184, 61, 46, 0.16);
+  color: var(--cinnabar);
+}
+
+.history-pain-pill.empty {
+  background: rgba(196, 137, 59, 0.2);
+  color: #8A5D16;
+}
+
+/* 📋 56 穴經絡與部位目錄總表抽屜 */
+.directory-modal-card {
+  max-width: 720px;
+  background: var(--bg-card);
+  color: var(--ink-dark);
+  padding: 18px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dir-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.dir-filter-input {
+  flex: 1;
+  min-width: 190px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-ink);
+  background: var(--bg-parchment);
+  color: var(--ink-dark);
+  font-size: 0.84rem;
+}
+
+.dir-mode-switch {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.dir-group-btn.active {
+  background: var(--herb-deep) !important;
+  color: #FAF7F0 !important;
+  border-color: var(--herb-deep) !important;
+}
+
+.dir-count-badge {
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+}
+
+.dir-list-wrap {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.dir-group {
+  border: 1px solid var(--border-ink);
+  border-radius: var(--radius-sm);
+  background: var(--bg-parchment);
+  padding: 8px 10px;
+}
+
+.dir-group-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--herb-deep);
+  font-family: var(--font-serif);
+  list-style: none;
+}
+
+.dir-group-count {
+  font-size: 0.74rem;
+  background: rgba(46, 79, 62, 0.12);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.dir-group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dir-point-item {
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-ink);
+  background: var(--bg-card);
+  color: var(--ink-dark);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.12s ease;
+}
+
+.dir-point-item:hover,
+.dir-point-item.active {
+  border-color: var(--cinnabar);
+  transform: translateY(-1px);
+}
+
+.dir-point-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+.dir-point-top strong {
+  font-family: var(--font-serif);
+  color: var(--herb-deep);
+  font-size: 0.88rem;
+}
+
+.dir-point-top small {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.dir-point-quick {
+  font-size: 0.74rem;
+  color: var(--ink-dark);
+  line-height: 1.35;
+  margin-bottom: 3px;
+}
+
+.dir-point-sym {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
+
 
 
 

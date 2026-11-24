@@ -13,8 +13,8 @@ import { AR_SUPPORTED_POINTS, openArModal, closeArModal, isArModalOpen, initArCo
 import { state, COLLOQUIAL_SYNONYMS } from './modules/state.js';
 import { speakGuide } from './modules/audio.js';
 import { getBaseBodySvgMarkup } from './modules/bodySvg.js';
-import { loadPersistedData, saveFavorites, savePainLogs, saveCustomPresets, exportBackup, importBackup } from './modules/storage.js';
-import { showToast } from './modules/ui.js';
+import { loadPersistedData, saveFavorites, savePainLogs, savePointNotes, saveCustomPresets, saveSettings, exportBackup, importBackup } from './modules/storage.js';
+import { showToast, escapeHtml } from './modules/ui.js';
 import { readDeepLinkFromUrl, syncUrlWithState, shareAcupointLink, sharePresetLink } from './modules/deeplink.js';
 import {
   initCanvasGestures,
@@ -42,18 +42,33 @@ import {
   stopAndResetTimer,
   triggerManualSwitchSide,
   formatTime,
-  getEffectiveDurationSec
+  getEffectiveRhythm
 } from './modules/timer.js';
 import { openSymptomWizardModal } from './modules/wizard.js';
+import { openDirectoryModal } from './modules/directory.js';
+import { exportConstitutionReportCard } from './modules/reportCard.js';
 
 // 暫存由親友分享連結或 3 題問診精靈產生的即時處方
 let sharedTempPreset = null;
 let wizardTempPreset = null;
 
-// 繪製當前選中穴位的「同經絡流光連線」（P2-3）
+// 動態更新畫布底部保健參考免責與視圖安全提醒（P1-2）
+function updateSafetyDisclaimerUI() {
+  const bar = document.getElementById('safetyDisclaimerBar');
+  if (!bar) return;
+  const viewNotices = {
+    sole: '🦶 足底反射區屬日常保健放鬆參考，非醫療診斷或治療；飯後 1 小時內、皮膚破皮、孕期或嚴重糖尿病足切忌強力刮壓。',
+    ear: '👂 耳穴全息圖屬日常養生參考，非醫療診斷；按壓時請使用圓潤指腹或耳豆輕壓，避免尖銳物刮傷耳軟骨發炎。',
+    child: '👶 小兒推拿特定穴主要適用於 0–6 歲嬰幼兒（7–18 歲適用轉骨／護眼穴）；操作前務必塗抹乳液潤滑、手法輕快柔和，發高燒不退或精神萎靡請立即就醫。'
+  };
+  bar.textContent =
+    viewNotices[state.currentView] ||
+    'ℹ️ 本圖鑑屬日常經絡保健參考，非醫療診斷或治療；急性劇痛、外傷腫脹或慢性病請諮詢專業中／西醫師。';
+}
+
+// 繪製當前選中穴位的「同經絡流光連線」（P2-3 + P1-4 修正正面手陽明大腸經折點不斜切人臉）
 function buildSameMeridianFlowSvg(selectedPt, currentView) {
   if (!selectedPt || !selectedPt.meridian) return '';
-  // 足底反射區、耳穴與經外奇穴不屬十二正經循行線，略過連線
   if (
     ['sole', 'ear'].includes(currentView) ||
     selectedPt.meridian.includes('奇穴') ||
@@ -72,7 +87,17 @@ function buildSameMeridianFlowSvg(selectedPt, currentView) {
   const buildPath = (coords) =>
     coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
 
-  const mainCoords = sameMeridianPts.map((pt) => pt.views[currentView]);
+  let mainCoords = sameMeridianPts.map((pt) => ({ ...pt.views[currentView], id: pt.id }));
+
+  // 正面「手陽明大腸經」循行：迎香(鼻翼) → 頸側 → 肩髃 → 曲池(手肘) → 合谷(虎口)，避免直線斜穿過臉頰
+  if (currentView === 'front' && selectedPt.meridian === '手陽明大腸經') {
+    const li20Idx = mainCoords.findIndex((c) => c.id === 'LI20');
+    const li11Idx = mainCoords.findIndex((c) => c.id === 'LI11');
+    if (li20Idx !== -1 && li11Idx === li20Idx + 1) {
+      mainCoords.splice(li11Idx, 0, { x: 178, y: 114 }, { x: 142, y: 152 });
+    }
+  }
+
   let paths = `<path class="meridian-flow-line" d="${buildPath(mainCoords)}" />`;
 
   // 若為左右對稱全身視圖且此經絡非正中單線，也繪製對稱側流光線
@@ -153,9 +178,10 @@ function renderBodyCanvas() {
   });
 
   bindNodeKeyboardEvents(svg, (pointId) => selectAcupoint(pointId, true));
+  updateSafetyDisclaimerUI();
 }
 
-// 選取穴位並更新右側教學面板
+// 選取穴位並更新右側教學面板（修復 P0-5：手動跳出處方連播時同步關閉 isPlaying 並保留分享網址參數）
 function selectAcupoint(pointId, autoSwitchViewIfNeeded = false, keepTimerIfPlaylist = false) {
   const point = ACUPOINTS.find((p) => p.id === pointId);
   if (!point) return;
@@ -173,13 +199,17 @@ function selectAcupoint(pointId, autoSwitchViewIfNeeded = false, keepTimerIfPlay
   }
 
   if (!keepTimerIfPlaylist) {
+    if (state.playlist.isPlaying) {
+      state.playlist.isPlaying = false;
+    }
     stopAndResetTimer();
   }
   renderBodyCanvas();
   applySvgZoomForPoint(point);
   renderInspector(point);
   updatePlaylistBannerUI();
-  syncUrlWithState();
+  const activePresetObj = getAllPresets().find((p) => p.id === state.activePresetId) || null;
+  syncUrlWithState(activePresetObj);
 }
 
 // 針對選中穴位自動將全身畫布局部放大聚焦
@@ -281,10 +311,11 @@ function updatePainLogAndConstitutionUI() {
     streakBadge.title = `已連續打卡 ${streak} 天・累計 ${state.painLogs.length} 次手感紀錄`;
   }
 
-  const undoBtn = document.getElementById('undoPainLogBtn');
-  if (undoBtn) {
-    undoBtn.style.display = state.painLogs.length > 0 ? 'inline-block' : 'none';
-  }
+  const hasLogs = state.painLogs.length > 0;
+  ['undoPainLogBtn', 'openPainHistoryBtn', 'exportReportCardBtn'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = hasLogs ? 'inline-block' : 'none';
+  });
 
   const pointLogs = state.painLogs.filter((item) => item.pointId === state.selectedPointId);
   const latestForPoint = pointLogs.length > 0 ? pointLogs[pointLogs.length - 1] : null;
@@ -576,12 +607,35 @@ function renderInspector(point) {
   document.getElementById('guideFinger').textContent = point.massageGuide.fingerToUse;
   document.getElementById('guideSensation').textContent = point.massageGuide.sensation;
 
-  const { pressSeconds, releaseSeconds, bilateral } = point.massageGuide.rhythm;
-  const effectiveSec = getEffectiveDurationSec(point);
+  // 非孕期臨床與操作安全守則（依穴位區域動態提醒，P1-2）
+  const cautionEl = document.getElementById('clinicalCautionBox');
+  if (cautionEl) {
+    if (['CV12', 'ST25', 'CV6'].includes(point.id)) {
+      cautionEl.textContent = '⚠️ 腹部安全守則：飯後 30–60 分鐘內或極度空腹時忌強力深壓腹部；有腹主動脈瘤、近期腹部手術或孕期請避開。';
+    } else if (point.id.startsWith('PED-')) {
+      cautionEl.textContent = '👶 小兒推拿守則：主要適用於 0–6 歲嬰幼兒，務必先塗抹乳液潤滑皮膚、手法輕快柔和；高燒不退或精神萎靡請立刻就醫。';
+    } else if (point.id.startsWith('REFLEX-') || point.id === 'KI1') {
+      cautionEl.textContent = '🦶 足底保健守則：飯後 1 小時內勿強壓足底；糖尿病足、足部外傷或服抗凝血劑者切忌重按，按後請飲溫水。';
+    } else {
+      cautionEl.textContent = '⚠️ 安全守則：皮膚有傷口、發炎紅腫、嚴重靜脈曲張、高血壓急性期或正服用抗凝血劑者，切勿於局部強力深壓。';
+    }
+  }
+
+  const { pressSeconds, releaseSeconds, totalDurationSec: effectiveSec, bilateral } = getEffectiveRhythm(point);
   document.getElementById('timerRhythmMeta').textContent =
     `深按 ${pressSeconds} 秒・放鬆 ${releaseSeconds} 秒（${bilateral ? '左右交替' : '單點按揉'}）`;
   document.getElementById('orbTotalLeft').textContent =
     `單穴時長 ${formatTime(effectiveSec)}`;
+
+  // 載入本穴個人手感筆記（P1-3）
+  const noteInput = document.getElementById('pointNoteInput');
+  const noteStatus = document.getElementById('pointNoteStatus');
+  if (noteInput) {
+    noteInput.value = state.pointNotes?.[point.id] || '';
+  }
+  if (noteStatus) {
+    noteStatus.textContent = state.pointNotes?.[point.id] ? '✓ 已存本機' : '自動儲存於本機';
+  }
 
   // Tab 3: 功效與配穴
   const tcmList = document.getElementById('tcmFunctionsList');
@@ -810,6 +864,7 @@ function togglePlaylistExecution() {
   }
 
   // 啟動整套處方自動連播
+  stopAndResetTimer();
   state.playlist.isPlaying = true;
   state.playlist.queue = queue;
   state.playlist.currentIndex = 0;
@@ -817,7 +872,7 @@ function togglePlaylistExecution() {
 
   const firstId = state.playlist.queue[0];
   const firstPt = ACUPOINTS.find((p) => p.id === firstId);
-  selectAcupoint(firstId, true, false);
+  selectAcupoint(firstId, true, true);
   switchDetailTab('tab-massage');
   updatePlaylistBannerUI();
 
@@ -831,7 +886,7 @@ function togglePlaylistExecution() {
   toggleTimer({ skipInitialVoice: true });
 }
 
-// 渲染處方籤列（含⭐收藏、多組自訂處方與「➕ 建立自訂處方」入口）
+// 渲染處方籤列（含⭐收藏、多組自訂處方與「➕ 建立自訂處方」入口；全部經 escapeHtml 防 XSS）
 function renderPresetRow() {
   const presetRow = document.getElementById('presetRow');
   if (!presetRow) return;
@@ -840,11 +895,11 @@ function renderPresetRow() {
   const cardsHtml = allPresets
     .map(
       (preset) => `
-    <div class="preset-card ${state.activePresetId === preset.id ? 'active' : ''}" data-preset-id="${preset.id}">
-      <span class="preset-icon">${preset.icon}</span>
+    <div class="preset-card ${state.activePresetId === preset.id ? 'active' : ''}" data-preset-id="${escapeHtml(preset.id)}">
+      <span class="preset-icon">${escapeHtml(preset.icon)}</span>
       <div>
-        <div class="preset-title">${preset.title}</div>
-        <div class="preset-sub">${preset.subtitle}</div>
+        <div class="preset-title">${escapeHtml(preset.title)}</div>
+        <div class="preset-sub">${escapeHtml(preset.subtitle)}</div>
       </div>
     </div>
   `
@@ -1175,9 +1230,137 @@ function closeAllModals() {
   if (isArModalOpen()) {
     closeArModal();
   }
-  ['settingsModal', 'presetEditorModal', 'symptomWizardModal'].forEach((id) => {
+  ['settingsModal', 'presetEditorModal', 'symptomWizardModal', 'directoryModal', 'painHistoryModal'].forEach((id) => {
     document.getElementById(id)?.classList.remove('open');
   });
+}
+
+// 同步還原所有已持久化的個人化設定（孕期安全鎖、頌缽音效、長輩大字體、節奏強度）
+function applyPersistedSettingsUI() {
+  const pregCheckbox = document.getElementById('pregnancySafeCheckbox');
+  const pregLabel = document.getElementById('pregnancySafeToggle');
+  const pregDot = document.getElementById('pregnancyActiveDot');
+  if (pregCheckbox) pregCheckbox.checked = !!state.pregnancySafeMode;
+  pregLabel?.classList.toggle('active', !!state.pregnancySafeMode);
+  if (pregDot) pregDot.style.display = state.pregnancySafeMode ? 'inline' : 'none';
+
+  const soundToggle = document.getElementById('soundToggle');
+  if (soundToggle) {
+    soundToggle.checked = state.settings?.soundEnabled !== false;
+  }
+
+  const fontScale = state.settings?.fontScale || 'normal';
+  document.documentElement.setAttribute('data-font-scale', fontScale);
+  document.querySelectorAll('.font-scale-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-font-scale') === fontScale);
+  });
+
+  const rhythmLevel = state.settings?.rhythmLevel || 'standard';
+  document.querySelectorAll('.rhythm-level-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-rhythm-level') === rhythmLevel);
+  });
+}
+
+// 📜 打卡歷史明細管理彈窗（支援單筆刪除與全部清空，P1-3）
+function openPainHistoryModal() {
+  let modal = document.getElementById('painHistoryModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'painHistoryModal';
+    modal.className = 'ar-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', '經絡痛感打卡歷史明細');
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+  }
+
+  const painLabelMap = {
+    smooth: '😌 微痠舒暢',
+    sharp: '⚡ 劇烈痠痛',
+    empty: '☁️ 空軟無力'
+  };
+
+  const paint = () => {
+    const recent = [...state.painLogs].reverse().slice(0, 50);
+    const total = state.painLogs.length;
+
+    const rowsHtml =
+      recent.length === 0
+        ? `<p style="text-align:center; color:var(--ink-muted); padding:20px 0;">目前沒有任何打卡紀錄。</p>`
+        : recent
+            .map((log, revIdx) => {
+              const realIdx = total - 1 - revIdx;
+              const d = new Date(log.timestamp || Date.now());
+              const dtStr = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              return `
+                <div class="history-log-row">
+                  <div class="history-log-info">
+                    <strong>${escapeHtml(log.pointName || log.pointId)} <small>(${escapeHtml(log.pointId)})</small></strong>
+                    <span class="history-log-meta">${dtStr}・${escapeHtml(log.meridian || '')}</span>
+                  </div>
+                  <div class="history-log-right">
+                    <span class="history-pain-pill ${escapeHtml(log.painType)}">${painLabelMap[log.painType] || '已紀錄'}</span>
+                    <button type="button" class="editor-del-btn" data-del-log-idx="${realIdx}" title="刪除此筆紀錄">✕</button>
+                  </div>
+                </div>
+              `;
+            })
+            .join('');
+
+    modal.innerHTML = `
+      <div class="ar-modal-card settings-modal-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px;">
+          <h3 style="font-family:var(--font-serif); color:var(--herb-deep); margin:0; font-size:1.05rem;">
+            📜 按後手感打卡明細（共 ${total} 筆${total > 50 ? '，顯示最新 50 筆' : ''}）
+          </h3>
+          <button type="button" id="closePainHistoryBtn" class="ar-close-btn">✕ 關閉</button>
+        </div>
+        <div class="history-log-list">${rowsHtml}</div>
+        ${
+          total > 0
+            ? `<div style="margin-top:12px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+                 <button type="button" id="historyExportCardBtn" class="util-pill-btn">🖼️ 匯出體質週報卡 PNG</button>
+                 <button type="button" id="clearAllPainLogsBtn" class="util-pill-btn undo-pain-btn">🗑 清空全部紀錄</button>
+               </div>`
+            : ''
+        }
+      </div>
+    `;
+
+    modal.querySelector('#closePainHistoryBtn')?.addEventListener('click', () => modal.classList.remove('open'));
+    modal.querySelector('#historyExportCardBtn')?.addEventListener('click', () => {
+      exportConstitutionReportCard(calculateStreakDays(state.painLogs));
+    });
+    modal.querySelectorAll('[data-del-log-idx]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.getAttribute('data-del-log-idx'));
+        if (idx >= 0 && idx < state.painLogs.length) {
+          state.painLogs.splice(idx, 1);
+          savePainLogs();
+          updatePainLogAndConstitutionUI();
+          const pt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+          if (pt) renderDietaryTherapy(pt);
+          paint();
+        }
+      });
+    });
+    modal.querySelector('#clearAllPainLogsBtn')?.addEventListener('click', () => {
+      if (!window.confirm('確定要清空全部按後體感打卡紀錄嗎？（建議先匯出 JSON 備份）')) return;
+      state.painLogs = [];
+      savePainLogs();
+      updatePainLogAndConstitutionUI();
+      const pt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+      if (pt) renderDietaryTherapy(pt);
+      modal.classList.remove('open');
+      showToast('🗑 已清空所有打卡紀錄');
+    });
+  };
+
+  paint();
+  modal.classList.add('open');
 }
 
 // 免手碰語音口令與鍵盤快捷鍵調度處理中心（修復 P0-1 與 P1-5）
@@ -1341,18 +1524,90 @@ function bindEvents() {
     });
   });
 
-  // 🤰 孕期安全鎖事件（同步 Header 小紅標）
+  // 📋 56 穴經絡與部位目錄總表抽屜（P2-1）
+  document.getElementById('openDirectoryBtn')?.addEventListener('click', () => {
+    openDirectoryModal(ACUPOINTS, (pid) => {
+      selectAcupoint(pid, true);
+    });
+  });
+
+  // 🤰 孕期安全鎖事件（持久化至 settings + 同步 Header 小紅標，P0-2）
   const pregCheckbox = document.getElementById('pregnancySafeCheckbox');
   const pregLabel = document.getElementById('pregnancySafeToggle');
   const pregDot = document.getElementById('pregnancyActiveDot');
   pregCheckbox?.addEventListener('change', (e) => {
     state.pregnancySafeMode = e.target.checked;
+    state.settings.pregnancySafeMode = state.pregnancySafeMode;
+    saveSettings();
     pregLabel?.classList.toggle('active', state.pregnancySafeMode);
     if (pregDot) pregDot.style.display = state.pregnancySafeMode ? 'inline' : 'none';
     renderBodyCanvas();
     const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
     if (currentPt) renderInspector(currentPt);
     updatePlaylistBannerUI();
+    showToast(state.pregnancySafeMode ? '🤰 已開啟並記住「孕期安全鎖」' : '已關閉孕期安全鎖');
+  });
+
+  // 🔔 頌缽與語音開關持久化（P0-2）
+  document.getElementById('soundToggle')?.addEventListener('change', (e) => {
+    state.settings.soundEnabled = e.target.checked;
+    saveSettings();
+  });
+
+  // 🔠 長輩大字體模式三段切換（P1-1）
+  document.querySelectorAll('.font-scale-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const scale = btn.getAttribute('data-font-scale') || 'normal';
+      state.settings.fontScale = scale;
+      saveSettings();
+      applyPersistedSettingsUI();
+      const map = { normal: '標準字體', large: '大字護眼模式', xlarge: '特大長輩模式' };
+      showToast(`🔠 已切換為：${map[scale] || scale}`);
+    });
+  });
+
+  // 💪 按壓節奏強度三段切換（柔和 / 標準 / 深層，P2-3）
+  document.querySelectorAll('.rhythm-level-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const level = btn.getAttribute('data-rhythm-level') || 'standard';
+      state.settings.rhythmLevel = level;
+      saveSettings();
+      applyPersistedSettingsUI();
+      const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+      if (currentPt) {
+        if (!state.timer.running) stopAndResetTimer();
+        renderInspector(currentPt);
+      }
+      const map = { gentle: '柔和節奏 (0.75x)', standard: '標準節奏 (1.0x)', deep: '深層指壓節奏 (1.4x)' };
+      showToast(`⏱️ 已切換為：${map[level] || level}`);
+    });
+  });
+
+  // 📜 打卡歷史明細 & 🖼️ 體質週報卡 PNG（P1-3 / P2-2）
+  document.getElementById('openPainHistoryBtn')?.addEventListener('click', openPainHistoryModal);
+  document.getElementById('exportReportCardBtn')?.addEventListener('click', () => {
+    exportConstitutionReportCard(calculateStreakDays(state.painLogs));
+  });
+
+  // 📝 單穴個人手感筆記自動儲存（350ms debounce，P1-3）
+  let noteDebounceTimer = null;
+  const pointNoteInput = document.getElementById('pointNoteInput');
+  const pointNoteStatus = document.getElementById('pointNoteStatus');
+  pointNoteInput?.addEventListener('input', (e) => {
+    const pid = state.selectedPointId;
+    const val = e.target.value;
+    if (pointNoteStatus) pointNoteStatus.textContent = '儲存中…';
+    if (noteDebounceTimer) clearTimeout(noteDebounceTimer);
+    noteDebounceTimer = setTimeout(() => {
+      if (!state.pointNotes) state.pointNotes = {};
+      if (val.trim()) {
+        state.pointNotes[pid] = val;
+      } else {
+        delete state.pointNotes[pid];
+      }
+      savePointNotes();
+      if (pointNoteStatus) pointNoteStatus.textContent = val.trim() ? '✓ 已存本機' : '自動儲存於本機';
+    }, 350);
   });
 
   // ⭐ 收藏穴位按鈕事件
@@ -1552,12 +1807,14 @@ function bindEvents() {
     try {
       const summary = await importBackup(file, 'merge');
       initThemeListener();
+      applyPersistedSettingsUI();
       updateReminderUI();
+      updatePainLogAndConstitutionUI();
       renderPresetRow();
       updatePlaylistBannerUI();
       const pt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
       if (pt) renderInspector(pt);
-      showToast(`📥 還原成功！共 ${summary.favorites} 顆收藏、${summary.presets} 組自訂處方、${summary.logs} 筆紀錄`);
+      showToast(`📥 還原成功！${summary.favorites} 收藏、${summary.presets} 自訂方、${summary.logs} 紀錄、${summary.notes} 筆記`);
     } catch (err) {
       showToast(`⚠️ 匯入失敗：${err.message || '檔案格式不符'}`);
     } finally {
@@ -1608,6 +1865,7 @@ function bindEvents() {
 // 啟動應用
 window.addEventListener('DOMContentLoaded', () => {
   loadPersistedData();
+  applyPersistedSettingsUI();
   initTimerDeps({
     getAllPoints: () => ACUPOINTS,
     selectAcupoint,

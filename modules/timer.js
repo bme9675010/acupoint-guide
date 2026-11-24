@@ -20,9 +20,30 @@ export function formatTime(sec) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+export const RHYTHM_MULTIPLIERS = {
+  gentle: { label: '🪶 柔和', factor: 0.75 },
+  standard: { label: '⚖️ 標準', factor: 1.0 },
+  deep: { label: '💪 深層', factor: 1.4 }
+};
+
+export function getEffectiveRhythm(point) {
+  const base = point?.massageGuide?.rhythm || { pressSeconds: 5, releaseSeconds: 2, totalDurationSec: 60, bilateral: true };
+  const level = state.settings?.rhythmLevel || 'standard';
+  const mult = RHYTHM_MULTIPLIERS[level]?.factor || 1.0;
+  const pressSeconds = Math.max(2, Math.min(12, Math.round(base.pressSeconds * mult)));
+  const releaseSeconds = Math.max(1, Math.min(6, Math.round(base.releaseSeconds * (level === 'deep' ? 1.2 : 1))));
+  const totalDurationSec = state.playlist.durations?.[point?.id] || base.totalDurationSec || 60;
+  return {
+    pressSeconds,
+    releaseSeconds,
+    totalDurationSec,
+    bilateral: !!base.bilateral,
+    level
+  };
+}
+
 export function getEffectiveDurationSec(point) {
-  if (!point) return 60;
-  return state.playlist.durations?.[point.id] || point.massageGuide?.rhythm?.totalDurationSec || 60;
+  return getEffectiveRhythm(point).totalDurationSec;
 }
 
 // 統一渲染光圈、文案與選擇性觸發音效/語音
@@ -81,8 +102,7 @@ export function toggleTimer({ skipInitialVoice = false } = {}) {
     return;
   }
 
-  const { pressSeconds, releaseSeconds } = point.massageGuide.rhythm;
-  const effectiveDurationSec = getEffectiveDurationSec(point);
+  const { pressSeconds, releaseSeconds, totalDurationSec: effectiveDurationSec, bilateral } = getEffectiveRhythm(point);
   if (state.timer.phase === 'idle') {
     state.timer.phase = 'press';
     state.timer.phaseTimeLeft = pressSeconds;
@@ -111,7 +131,7 @@ export function toggleTimer({ skipInitialVoice = false } = {}) {
         if (state.playlist.currentIndex < state.playlist.queue.length) {
           const nextId = state.playlist.queue[state.playlist.currentIndex];
           const nextPt = deps.getAllPoints().find((p) => p.id === nextId);
-          deps.selectAcupoint(nextId, true, false);
+          deps.selectAcupoint(nextId, true, true);
           deps.updatePlaylistBannerUI();
           playSingingBowl('press');
           vibrate('switchSide');
@@ -144,7 +164,7 @@ export function toggleTimer({ skipInitialVoice = false } = {}) {
     // 若為左右雙穴，在計時過半（剩餘一半秒數）時提示「換另一側按揉」
     // 重要：不重複觸發 speakGuide('深按')，避免截斷換邊語音；也不蓋掉換邊提示文案
     const halfSec = Math.floor(effectiveDurationSec / 2);
-    if (point.massageGuide.rhythm.bilateral && state.timer.totalTimeLeft === halfSec) {
+    if (bilateral && state.timer.totalTimeLeft === halfSec) {
       playSingingBowl('press');
       vibrate('switchSide');
       speakGuide('時間過半，若單手按揉請換另一側');
@@ -178,7 +198,8 @@ export function triggerManualSwitchSide() {
   const point = deps.getAllPoints().find((p) => p.id === state.selectedPointId);
   if (!point) return;
 
-  if (!point.massageGuide?.rhythm?.bilateral) {
+  const { pressSeconds, bilateral } = getEffectiveRhythm(point);
+  if (!bilateral) {
     showToast('本穴位為人體正中單穴或無需特別換側');
     return;
   }
@@ -187,7 +208,7 @@ export function triggerManualSwitchSide() {
   vibrate('switchSide');
   speakGuide('換另一側按揉，請深按');
   state.timer.phase = 'press';
-  state.timer.phaseTimeLeft = point.massageGuide.rhythm.pressSeconds;
+  state.timer.phaseTimeLeft = pressSeconds;
   renderTimerFrame(point, {
     triggerSound: false,
     skipVoice: true,

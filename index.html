@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="本草尋穴" />
@@ -35,6 +35,10 @@
 
         <button type="button" id="openWizardBtn" class="util-pill-btn wizard-entry-btn" title="3 題快速問診，依症狀、體質與姿勢現場組出專屬處方">
           🩺 問診配穴
+        </button>
+
+        <button type="button" id="openDirectoryBtn" class="util-pill-btn" title="開啟 56 穴經絡與部位目錄總表，快速查表與搜尋">
+          📋 總表
         </button>
 
         <button type="button" id="voiceControlBtn" class="util-pill-btn voice-pill-btn" title="開啟免手碰語音口令控制（推拿塗乳液免碰螢幕，支援說「開始/暫停/下一穴/換邊」）">
@@ -156,6 +160,10 @@
           </div>
         </div>
       </div>
+
+      <div id="safetyDisclaimerBar" class="safety-disclaimer-bar">
+        ℹ️ 本圖鑑屬日常經絡保健參考，非醫療診斷或治療；急性劇痛、外傷腫脹或慢性病請諮詢專業中／西醫師。
+      </div>
     </section>
 
     <!-- 右欄：穴位微距定位與頌缽跟練計時器 -->
@@ -247,6 +255,10 @@
           <p id="guideSensation"></p>
         </div>
 
+        <div id="clinicalCautionBox" class="clinical-caution-box">
+          ⚠️ 安全守則：皮膚有傷口、發炎紅腫、嚴重靜脈曲張或正服用抗凝血劑者，切勿於局部強力深壓。
+        </div>
+
         <!-- 專為 iPhone 最佳化的頌缽音頻 + 語音 + 螢幕常亮防休眠 + 呼吸光圈跟練器 -->
         <div class="timer-box">
           <div class="timer-top-row">
@@ -258,6 +270,13 @@
                 <span>🔔 頌缽與語音</span>
               </label>
             </div>
+          </div>
+
+          <div class="rhythm-level-row" role="group" aria-label="按壓節奏強度">
+            <span class="rhythm-level-label">節奏強度：</span>
+            <button type="button" class="rhythm-level-btn" data-rhythm-level="gentle">🪶 柔和</button>
+            <button type="button" class="rhythm-level-btn active" data-rhythm-level="standard">⚖️ 標準</button>
+            <button type="button" class="rhythm-level-btn" data-rhythm-level="deep">💪 深層</button>
           </div>
 
           <div class="breathing-orb-wrap">
@@ -284,11 +303,19 @@
 
         <!-- 🩺 按後痛感體質自我檢測紀錄 -->
         <div class="info-section pain-log-section" style="margin-top: 12px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
             <h4>🩺 按完感覺如何？（點擊紀錄「通則不痛」經絡體質＋自動調配食療方）</h4>
-            <button type="button" id="undoPainLogBtn" class="util-pill-btn undo-pain-btn" style="display:none;" title="撤銷上一筆紀錄">
-              ↩ 撤銷上一筆
-            </button>
+            <div class="pain-log-tools">
+              <button type="button" id="openPainHistoryBtn" class="util-pill-btn" style="display:none;" title="檢視或刪除過去的打卡明細">
+                📜 明細
+              </button>
+              <button type="button" id="exportReportCardBtn" class="util-pill-btn" style="display:none;" title="生成宣紙風格經絡體質週報卡 PNG，可傳給親友或中醫師">
+                🖼️ 週報圖
+              </button>
+              <button type="button" id="undoPainLogBtn" class="util-pill-btn undo-pain-btn" style="display:none;" title="撤銷上一筆紀錄">
+                ↩ 撤銷
+              </button>
+            </div>
           </div>
           <div class="pain-btn-group">
             <button type="button" class="pain-log-btn" data-pain="smooth" data-feeling="smooth">
@@ -304,6 +331,21 @@
           <p id="constitutionInsight" class="constitution-insight">
             尚未記錄今日按壓體感。按完穴位後點選上方按鈕，系統將自動為您分析近期經絡淤堵趨勢與對應食療茶飲。
           </p>
+        </div>
+
+        <!-- 📝 單穴個人手感筆記（自動存本機並納入 JSON 備份） -->
+        <div class="info-section point-note-section" style="margin-top: 12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <h4 style="margin:0;">📝 本穴個人手感筆記</h4>
+            <span id="pointNoteStatus" class="point-note-status">自動儲存於本機</span>
+          </div>
+          <textarea
+            id="pointNoteInput"
+            class="point-note-input"
+            rows="2"
+            maxlength="300"
+            placeholder="例：左手比右手痠、晚上按完 2 分鐘肩頸馬上鬆開…"
+          ></textarea>
         </div>
       </div>
 
@@ -457,6 +499,20 @@
             <p class="settings-desc">切換日間宣紙淺色、夜間墨綠深色（睡前助眠不刺眼）或跟隨系統。</p>
           </div>
           <button type="button" id="themeToggleBtn" class="util-pill-btn">☀️ 日間(自動)</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-row">
+          <div>
+            <strong>🔠 閱讀字體大小（長輩大字模式）</strong>
+            <p class="settings-desc">放大全站找穴步驟、食療與按鈕字級，亦支援手機雙指自由縮放。</p>
+          </div>
+          <div class="font-scale-group" role="group" aria-label="字體大小選擇">
+            <button type="button" class="util-pill-btn font-scale-btn active" data-font-scale="normal">標準</button>
+            <button type="button" class="util-pill-btn font-scale-btn" data-font-scale="large">大字</button>
+            <button type="button" class="util-pill-btn font-scale-btn" data-font-scale="xlarge">特大</button>
+          </div>
         </div>
       </div>
 

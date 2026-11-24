@@ -1,7 +1,7 @@
 // ✏️ 多組自訂處方與單穴秒數編輯器（支援收藏處方 + 建立/編輯/刪除多組命名處方）
 import { state } from './state.js';
 import { saveFavorites, saveCustomPresets, saveDurations } from './storage.js';
-import { showToast } from './ui.js';
+import { showToast, escapeHtml } from './ui.js';
 
 const PRESET_ICONS = ['🌿', '🌙', '💻', '👶', '🔥', '💆', '🧘', '⚡'];
 
@@ -122,7 +122,7 @@ export function renderPresetEditorModal(allPoints, onSaved, options = {}) {
               (ic) => `<button type="button" class="editor-icon-btn ${target.icon === ic ? 'active' : ''}" data-icon="${ic}">${ic}</button>`
             ).join('')}
           </div>
-          <input type="text" id="customPresetTitleInput" class="editor-title-input" value="${target.title.replace(/"/g, '&quot;')}" maxlength="20" placeholder="輸入處方名稱（例：加班急救、媽媽睡前）" />
+          <input type="text" id="customPresetTitleInput" class="editor-title-input" value="${escapeHtml(target.title)}" maxlength="20" placeholder="輸入處方名稱（例：加班急救、媽媽睡前）" />
         </div>
       `;
 
@@ -130,7 +130,7 @@ export function renderPresetEditorModal(allPoints, onSaved, options = {}) {
       <div class="ar-modal-card" style="max-width: 560px; background: var(--bg-card); color: var(--ink-dark); padding: 18px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px;">
           <h3 style="font-family:var(--font-serif); color:var(--herb-deep); margin:0; font-size:1.05rem;">
-            ✏️ ${draftNew ? '建立新的自訂養生處方' : `編輯「${target.title}」`}
+            ✏️ ${draftNew ? '建立新的自訂養生處方' : `編輯「${escapeHtml(target.title)}」`}
           </h3>
           <button type="button" id="closePresetEditorBtn" class="ar-close-btn" style="background:var(--herb-deep);">✓ ${draftNew ? '儲存處方' : '完成'}</button>
         </div>

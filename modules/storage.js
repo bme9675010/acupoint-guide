@@ -1,16 +1,17 @@
-// 💾 localStorage 持久化 + 備份匯出／匯入（收藏、體質紀錄、自訂處方、單穴秒數、偏好設定）
+// 💾 localStorage 持久化 + 備份匯出／匯入（收藏、體質紀錄、單穴筆記、自訂處方、單穴秒數、偏好設定）
 import { state } from './state.js';
 
 export const STORAGE_KEYS = {
   FAVS: 'acupoint_favs_v1',
   LOGS: 'acupoint_logs_v1',
+  NOTES: 'acupoint_notes_v1',
   CUSTOM_PRESETS: 'acupoint_custom_presets_v1',
   DURATIONS: 'acupoint_durations_v1',
   SETTINGS: 'acupoint_settings_v1'
 };
 
 const MAX_LOGS = 300;
-const BACKUP_VERSION = 2;
+const BACKUP_VERSION = 3;
 
 function safeSet(key, value) {
   try {
@@ -42,11 +43,16 @@ function safeParse(raw, fallback) {
 export function loadPersistedData() {
   state.favorites = new Set(safeParse(localStorage.getItem(STORAGE_KEYS.FAVS), []));
   state.painLogs = safeParse(localStorage.getItem(STORAGE_KEYS.LOGS), []);
+  const loadedNotes = safeParse(localStorage.getItem(STORAGE_KEYS.NOTES), {});
+  state.pointNotes = loadedNotes && typeof loadedNotes === 'object' ? loadedNotes : {};
   const loadedPresets = safeParse(localStorage.getItem(STORAGE_KEYS.CUSTOM_PRESETS), []);
   state.customPresets = Array.isArray(loadedPresets) ? loadedPresets : [];
   const loadedDurations = safeParse(localStorage.getItem(STORAGE_KEYS.DURATIONS), {});
   state.playlist.durations = loadedDurations && typeof loadedDurations === 'object' ? loadedDurations : {};
   state.settings = { ...state.settings, ...safeParse(localStorage.getItem(STORAGE_KEYS.SETTINGS), {}) };
+
+  // 同步還原孕期安全鎖（P0-2：避免重整後重置成關閉）
+  state.pregnancySafeMode = !!state.settings.pregnancySafeMode;
 }
 
 export function saveFavorites() {
@@ -56,6 +62,10 @@ export function saveFavorites() {
 export function savePainLogs() {
   state.painLogs = state.painLogs.slice(-MAX_LOGS);
   safeSet(STORAGE_KEYS.LOGS, JSON.stringify(state.painLogs));
+}
+
+export function savePointNotes() {
+  safeSet(STORAGE_KEYS.NOTES, JSON.stringify(state.pointNotes || {}));
 }
 
 export function saveCustomPresets() {
@@ -78,6 +88,7 @@ export async function exportBackup() {
     exportedAt: new Date().toISOString(),
     favorites: [...state.favorites],
     painLogs: state.painLogs,
+    pointNotes: state.pointNotes || {},
     customPresets: state.customPresets,
     durations: state.playlist.durations || {},
     settings: state.settings
@@ -117,12 +128,14 @@ export async function importBackup(file, mode = 'merge') {
 
   const favs = Array.isArray(data.favorites) ? data.favorites : [];
   const logs = Array.isArray(data.painLogs) ? data.painLogs.filter((l) => l && l.pointId && l.timestamp) : [];
+  const notes = data.pointNotes && typeof data.pointNotes === 'object' ? data.pointNotes : {};
   const presets = Array.isArray(data.customPresets) ? data.customPresets : [];
   const durations = data.durations && typeof data.durations === 'object' ? data.durations : {};
 
   if (mode === 'replace') {
     state.favorites = new Set(favs);
     state.painLogs = logs;
+    state.pointNotes = { ...notes };
     state.customPresets = presets;
     state.playlist.durations = { ...durations };
   } else {
@@ -136,6 +149,7 @@ export async function importBackup(file, mode = 'merge') {
       }
     });
     state.painLogs.sort((a, b) => a.timestamp - b.timestamp);
+    state.pointNotes = { ...(state.pointNotes || {}), ...notes };
     const presetIds = new Set(state.customPresets.map((p) => p.id));
     presets.forEach((p) => {
       if (p && p.id && !presetIds.has(p.id)) state.customPresets.push(p);
@@ -145,10 +159,12 @@ export async function importBackup(file, mode = 'merge') {
 
   if (data.settings && typeof data.settings === 'object') {
     state.settings = { ...state.settings, ...data.settings };
+    state.pregnancySafeMode = !!state.settings.pregnancySafeMode;
   }
 
   saveFavorites();
   savePainLogs();
+  savePointNotes();
   saveCustomPresets();
   saveDurations();
   saveSettings();
@@ -156,6 +172,7 @@ export async function importBackup(file, mode = 'merge') {
   return {
     favorites: state.favorites.size,
     logs: state.painLogs.length,
+    notes: Object.keys(state.pointNotes || {}).filter((k) => state.pointNotes[k]).length,
     presets: state.customPresets.length
   };
 }

@@ -138,6 +138,31 @@ const hasForbidden = wiz.pointObjects.some((p) => p.contraindications?.pregnancy
 assert(wiz.points.length === 4 && !hasForbidden, `問診精靈配出 4 穴且孕期禁穴已安全過濾 (${wiz.points.join(', ')})`);
 stateMod.state.pregnancySafeMode = false;
 
+// 7. 本輪安全、無障礙與新功能回歸檢查
+const uiMod = await import(pathToFileURL(path.join(root, 'modules/ui.js')).href);
+const timerMod = await import(pathToFileURL(path.join(root, 'modules/timer.js')).href);
+
+const xssEscaped = uiMod.escapeHtml('<img src="x" onerror=\'alert(1)\'>');
+assert(!xssEscaped.includes('<') && !xssEscaped.includes('>') && !xssEscaped.includes('"'), 'escapeHtml 防 XSS 跳脫正常');
+assert(!html.includes('user-scalable=no'), 'viewport 已解鎖手機雙指放大（WCAG 無障礙合規）');
+
+const arCode = fs.readFileSync(path.join(root, 'arFinder.js'), 'utf8');
+assert(arCode.includes('sessionToken'), 'AR 具備 sessionToken 防背景相機洩漏保護');
+
+const voiceCode = fs.readFileSync(path.join(root, 'modules/voiceControl.js'), 'utf8');
+assert(voiceCode.includes('isTtsSpeakingOrCooling'), '語音辨識具備 TTS 回音靜默防護');
+
+const storageCode = fs.readFileSync(path.join(root, 'modules/storage.js'), 'utf8');
+assert(storageCode.includes('pregnancySafeMode') && storageCode.includes('pointNotes'), '孕期安全鎖與單穴筆記持久化就緒');
+
+const samplePt = ACUPOINTS.find((p) => p.id === 'LI4');
+stateMod.state.settings.rhythmLevel = 'gentle';
+const rGentle = timerMod.getEffectiveRhythm(samplePt);
+stateMod.state.settings.rhythmLevel = 'deep';
+const rDeep = timerMod.getEffectiveRhythm(samplePt);
+stateMod.state.settings.rhythmLevel = 'standard';
+assert(rGentle.pressSeconds < rDeep.pressSeconds, `按壓節奏強度倍率正常 (柔和=${rGentle.pressSeconds}s < 深層=${rDeep.pressSeconds}s)`);
+
 console.log('\n========================================');
 if (failures === 0) {
   console.log('🎉 ALL CHECKS PASSED (0 failures)');

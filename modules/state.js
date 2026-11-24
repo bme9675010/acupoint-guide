@@ -9,12 +9,17 @@ export const state = {
   pregnancySafeMode: false,      // 🤰 孕期安全鎖（開啟時標示並於連播自動跳過孕婦禁穴）
   favorites: new Set(),          // ⭐ 個人收藏穴位 ID 集合
   painLogs: [],                  // 🩺 按後痛感與體質紀錄陣列
-  customPresets: [],             // ✏️ 使用者自訂處方 [{ id, title, icon, items: [{ pointId, seconds }] }]
+  pointNotes: {},                // 📝 單穴個人手感筆記 { [pointId]: string }
+  customPresets: [],             // ✏️ 使用者自訂處方 [{ id, title, icon, points }]
   settings: {
     theme: 'auto',               // 'auto' | 'light' | 'dark'
     haptics: true,               // 📳 計時器震動提示
     reminderEnabled: false,      // ⏰ 每日提醒
-    reminderTime: '21:30'
+    reminderTime: '21:30',
+    pregnancySafeMode: false,    // 🤰 孕期安全鎖（持久化，避免重整重置）
+    soundEnabled: true,          // 🔔 頌缽與語音播報（持久化）
+    fontScale: 'normal',         // 🔠 'normal' | 'large' | 'xlarge'（長輩大字體模式）
+    rhythmLevel: 'standard'      // 💪 'gentle' | 'standard' | 'deep'（按壓節奏強度）
   },
   highlightedIds: new Set(),     // 高亮穴位集合
   xrayOpacity: 0.55,             // 骨骼透視透明度 (0 ~ 1)
