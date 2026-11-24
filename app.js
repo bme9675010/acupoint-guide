@@ -20,7 +20,8 @@ import {
   saveCustomPresets,
   saveSettings,
   exportBackup,
-  importBackup
+  importBackup,
+  getActiveProfile
 } from './modules/storage.js';
 import { showToast, escapeHtml, initModalScrollLock } from './modules/ui.js';
 import { readDeepLinkFromUrl, syncUrlWithState, shareAcupointLink, sharePresetLink } from './modules/deeplink.js';
@@ -712,8 +713,18 @@ function clearAllFilters() {
   renderBodyCanvas();
 }
 
-// 初始化當下時辰子午流注提示
-function initZiwuLiuzhu() {
+// 時辰子午流注與二十四節氣狀態（支援長駐 PWA 跨時辰／跨午夜自動刷新，P0-2）
+let currentZiwuCache = null;
+let currentSolarTermCache = null;
+let lastCelestialHour = -1;
+let lastCelestialDateKey = '';
+let pwaUpdateAvailable = false;
+
+function getLocalDateKey(d = new Date()) {
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function renderZiwuBannerContent() {
   const hour = new Date().getHours();
   const currentZiwu =
     ZIWU_LIUZHU.find((item) => {
@@ -721,9 +732,11 @@ function initZiwuLiuzhu() {
       return hour >= item.startHour && hour < item.endHour;
     }) || ZIWU_LIUZHU[0];
 
+  currentZiwuCache = currentZiwu;
+  lastCelestialHour = hour;
+
   const badge = document.getElementById('ziwuBadge');
   const text = document.getElementById('ziwuText');
-  const banner = document.getElementById('ziwuBanner');
 
   const recNames = currentZiwu.recommendedIds
     .map((id) => ACUPOINTS.find((p) => p.id === id)?.name)
@@ -735,27 +748,32 @@ function initZiwuLiuzhu() {
 
   if (badge) badge.textContent = `${currentZiwu.zhi}・${currentZiwu.meridian}`;
   if (text) text.textContent = `當令養${currentZiwu.organ}｜宜按：${recNames}${shortDrink}`;
+}
 
-  banner?.addEventListener('click', () => {
+function initZiwuLiuzhu() {
+  renderZiwuBannerContent();
+  document.getElementById('ziwuBanner')?.addEventListener('click', () => {
+    const ziwu = currentZiwuCache || ZIWU_LIUZHU[0];
     state.activePresetId = null;
     state.activeSymptomTag = null;
     state.playlist.isPlaying = false;
     updatePlaylistBannerUI();
     document.querySelectorAll('.preset-card, .symptom-chip').forEach((el) => el.classList.remove('active'));
-    state.highlightedIds = new Set(currentZiwu.recommendedIds);
-    selectAcupoint(currentZiwu.recommendedIds[0], true);
+    state.highlightedIds = new Set(ziwu.recommendedIds);
+    selectAcupoint(ziwu.recommendedIds[0], true);
   });
 }
 
-// 初始化當令二十四節氣提示與養生穴位推薦
-function initSolarTerms() {
+function renderSolarTermBannerContent() {
   const termData = getCurrentSolarTerm();
   if (!termData || !termData.current) return;
 
   const currentTerm = termData.current;
+  currentSolarTermCache = currentTerm;
+  lastCelestialDateKey = getLocalDateKey();
+
   const badge = document.getElementById('solarTermBadge');
   const text = document.getElementById('solarTermText');
-  const banner = document.getElementById('solarTermBanner');
 
   const recNames = currentTerm.recommendedPointIds
     .map((id) => ACUPOINTS.find((p) => p.id === id)?.name)
@@ -764,8 +782,17 @@ function initSolarTerms() {
 
   if (badge) badge.textContent = `${currentTerm.name}・${currentTerm.season}`;
   if (text) text.textContent = `${currentTerm.slogan}｜宜按：${recNames}｜🍵 ${currentTerm.tea.name.split('（')[0]}`;
+}
 
+function initSolarTerms() {
+  renderSolarTermBannerContent();
   const triggerTermHighlight = () => {
+    const currentTerm = currentSolarTermCache || getCurrentSolarTerm()?.current;
+    if (!currentTerm) return;
+    const recNames = currentTerm.recommendedPointIds
+      .map((id) => ACUPOINTS.find((p) => p.id === id)?.name)
+      .filter(Boolean)
+      .join('、');
     state.activePresetId = null;
     state.activeSymptomTag = null;
     state.activePosture = null;
@@ -777,8 +804,113 @@ function initSolarTerms() {
     showToast(`📅 已標記當令【${currentTerm.name}】養生穴位：${recNames}`);
   };
 
-  banner?.addEventListener('click', triggerTermHighlight);
+  document.getElementById('solarTermBanner')?.addEventListener('click', triggerTermHighlight);
   document.getElementById('solarTermJumpBtn')?.addEventListener('click', triggerTermHighlight);
+}
+
+// 跨時辰或跨午夜自動刷新子午流注、二十四節氣與當下食療建議
+function refreshCelestialBannersIfNeeded() {
+  const now = new Date();
+  const curHour = now.getHours();
+  const curDateKey = getLocalDateKey(now);
+  let changed = false;
+
+  if (curHour !== lastCelestialHour) {
+    renderZiwuBannerContent();
+    changed = true;
+  }
+  if (curDateKey !== lastCelestialDateKey) {
+    renderSolarTermBannerContent();
+    changed = true;
+  }
+  if (changed) {
+    const currentPt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
+    if (currentPt) renderDietaryTherapy(currentPt);
+  }
+}
+
+function startCelestialAutoRefresh() {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshCelestialBannersIfNeeded();
+  });
+  setInterval(refreshCelestialBannersIfNeeded, 15 * 60 * 1000);
+}
+
+// 📡 PWA 離線狀態／新版立即更新常駐提示條（P1-1）
+function updatePwaStatusBarUI() {
+  const bar = document.getElementById('pwaStatusBar');
+  const textEl = document.getElementById('pwaStatusText');
+  const reloadBtn = document.getElementById('pwaReloadBtn');
+  if (!bar || !textEl) return;
+
+  const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+
+  if (pwaUpdateAvailable) {
+    bar.style.display = 'flex';
+    bar.className = 'pwa-status-bar update';
+    textEl.textContent = '✨ 本草尋穴已備妥最新離線版本，點擊即可套用新功能與修正。';
+    if (reloadBtn) reloadBtn.style.display = 'inline-flex';
+  } else if (isOffline) {
+    bar.style.display = 'flex';
+    bar.className = 'pwa-status-bar offline';
+    textEl.textContent = '📡 目前處於離線模式：全站 56 穴圖鑑、1:1 摸骨圖、頌缽跟練與本機打卡皆可正常使用。';
+    if (reloadBtn) reloadBtn.style.display = 'none';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function initPwaStatusBar() {
+  document.getElementById('pwaReloadBtn')?.addEventListener('click', () => {
+    window.location.reload();
+  });
+  window.addEventListener('offline', () => {
+    updatePwaStatusBarUI();
+    showToast('📡 已切換為離線模式，56 穴圖鑑與跟練不受影響');
+  });
+  window.addEventListener('online', () => {
+    updatePwaStatusBarUI();
+    showToast('🌐 網路已恢復連線');
+  });
+  updatePwaStatusBarUI();
+}
+
+// 👨‍👩‍👧‍👦 更新頂部成員按鈕文字 & 切換成員後的完整 UI 同步（P2-1）
+function updateProfileButtonUI() {
+  const btn = document.getElementById('profileSwitchBtn');
+  if (!btn) return;
+  const prof = getActiveProfile();
+  btn.textContent = `${prof.icon || '👤'} ${prof.name || '本人'}`;
+  btn.title = `目前成員：${prof.name || '本人'}（點此切換或新增家庭成員檔案）`;
+}
+
+function handleProfileSwitched(prof) {
+  state.activePresetId = null;
+  state.activeSymptomTag = null;
+  state.activePosture = null;
+  state.highlightedIds.clear();
+  state.playlist.isPlaying = false;
+  state.playlist.completedIds.clear();
+  stopAndResetTimer();
+
+  updateProfileButtonUI();
+  initThemeListener();
+  applyPersistedSettingsUI();
+  updateReminderUI();
+  renderPresetRow();
+  updatePlaylistBannerUI();
+  updatePainLogAndConstitutionUI();
+
+  if (prof?.role === 'child' && state.currentView !== 'child') {
+    state.currentView = 'child';
+    updateViewTabButtons();
+    const firstChildPt = ACUPOINTS.find((p) => p.views.child);
+    if (firstChildPt) {
+      selectAcupoint(firstChildPt.id, false, false, { pushHistory: false });
+      return;
+    }
+  }
+  selectAcupoint(state.selectedPointId, false, false, { pushHistory: false });
 }
 
 // 關閉全部已開啟的彈窗
@@ -787,7 +919,16 @@ function closeAllModals() {
     arModuleInstance.closeArModal();
   }
   zenModuleInstance?.closeZenMode();
-  ['settingsModal', 'presetEditorModal', 'symptomWizardModal', 'directoryModal', 'painHistoryModal', 'compareModal'].forEach((id) => {
+  [
+    'settingsModal',
+    'presetEditorModal',
+    'symptomWizardModal',
+    'directoryModal',
+    'painHistoryModal',
+    'compareModal',
+    'profilesModal',
+    'onboardingModal'
+  ].forEach((id) => {
     document.getElementById(id)?.classList.remove('open');
   });
 }
@@ -925,6 +1066,19 @@ function bindEvents() {
   document.getElementById('closeSettingsBtn')?.addEventListener('click', () => settingsModal?.classList.remove('open'));
   settingsModal?.addEventListener('click', (e) => {
     if (e.target === settingsModal) settingsModal.classList.remove('open');
+  });
+
+  // 👨‍👩‍👧‍👦 家庭成員獨立檔案切換（懶載入，P2-1）
+  document.getElementById('profileSwitchBtn')?.addEventListener('click', async () => {
+    const { openProfilesModal } = await import('./modules/profiles.js');
+    openProfilesModal(handleProfileSwitched);
+  });
+
+  // ✨ 重新開啟 3 步快速新手導覽（懶載入，P2-2）
+  document.getElementById('openOnboardingBtn')?.addEventListener('click', async () => {
+    settingsModal?.classList.remove('open');
+    const { openOnboardingModal } = await import('./modules/onboarding.js');
+    openOnboardingModal();
   });
 
   // 🩺 3 題問診精靈（懶載入）
@@ -1128,6 +1282,15 @@ function bindEvents() {
     if (preset) sharePresetLink(preset, ACUPOINTS);
     else showToast('請先由上方處方籤列選擇一組處方再分享');
   });
+  document.getElementById('printPlaylistBtn')?.addEventListener('click', async () => {
+    const preset = getAllPresets().find((p) => p.id === state.activePresetId);
+    if (!preset) {
+      showToast('請先選擇一組處方再列印處方單');
+      return;
+    }
+    const { printPresetSheet } = await import('./modules/presetPrint.js');
+    printPresetSheet(preset, ACUPOINTS, DIETARY_THERAPY);
+  });
 
   // 🎙️ 語音控制 & 🔄 微距翻轉 & ↩ 撤銷打卡
   document.getElementById('voiceControlBtn')?.addEventListener('click', toggleVoiceControl);
@@ -1194,6 +1357,7 @@ function bindEvents() {
     if (!file) return;
     try {
       const summary = await importBackup(file, 'merge');
+      updateProfileButtonUI();
       initThemeListener();
       applyPersistedSettingsUI();
       updateReminderUI();
@@ -1202,7 +1366,8 @@ function bindEvents() {
       updatePlaylistBannerUI();
       const pt = ACUPOINTS.find((p) => p.id === state.selectedPointId);
       if (pt) renderInspector(pt);
-      showToast(`📥 還原成功！${summary.favorites} 收藏、${summary.presets} 自訂方、${summary.logs} 紀錄、${summary.notes} 筆記`);
+      const profNote = summary.profiles > 1 ? `（含 ${summary.profiles} 位家庭成員）` : '';
+      showToast(`📥 還原成功${profNote}！${summary.favorites} 收藏、${summary.presets} 自訂方、${summary.logs} 紀錄、${summary.notes} 筆記`);
     } catch (err) {
       showToast(`⚠️ 匯入失敗：${err.message || '檔案格式不符'}`);
     } finally {
@@ -1306,6 +1471,7 @@ function bindEvents() {
 window.addEventListener('DOMContentLoaded', () => {
   loadPersistedData();
   initModalScrollLock();
+  updateProfileButtonUI();
   applyPersistedSettingsUI();
 
   initPainLogDeps({
@@ -1331,6 +1497,8 @@ window.addEventListener('DOMContentLoaded', () => {
   startReminderScheduler();
   initZiwuLiuzhu();
   initSolarTerms();
+  startCelestialAutoRefresh();
+  initPwaStatusBar();
   initFilters();
   initCanvasGestures();
   bindEvents();
@@ -1359,6 +1527,21 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   registerServiceWorkerWithUpdates(() => {
-    showToast('✨ 本草尋穴已於背景更新至最新版本，重新整理即可生效', 4500);
+    pwaUpdateAvailable = true;
+    updatePwaStatusBarUI();
+    showToast('✨ 本草尋穴已備妥最新版本，點上方「🔄 立即更新」即可生效', 4500);
   });
+
+  // ✨ 首次造訪自動彈出 3 步快速導覽（若有分享連結／指定穴位深連結則不打斷，P2-2）
+  const hasExplicitDeepLink = !!(deep.sharedPreset || deep.presetId || deep.pointId || deep.view);
+  let seenOnboarding = true;
+  try {
+    seenOnboarding = localStorage.getItem('acupoint_onboarding_seen_v1') === '1';
+  } catch (_) {}
+  if (!seenOnboarding && !hasExplicitDeepLink) {
+    setTimeout(async () => {
+      const { openOnboardingModal } = await import('./modules/onboarding.js');
+      openOnboardingModal();
+    }, 600);
+  }
 });

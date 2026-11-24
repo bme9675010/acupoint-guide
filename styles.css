@@ -3041,6 +3041,16 @@ body.modal-open {
   transition: transform 0.2s ease;
 }
 
+.ar-viewport.is-zoomed {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.ar-viewport.is-zoomed.dragging {
+  cursor: grabbing;
+}
+
 #zoomArBtn.active {
   background: var(--amber-gold);
   color: #1A1A1A;
@@ -3048,8 +3058,252 @@ body.modal-open {
 }
 
 /* =========================================================
-   🖨️ P2-1 專屬 A4 穴位養生圖解單列印／PDF 樣式
+   📡 P1-1 PWA 離線狀態／新版立即更新常駐提示條
    ========================================================= */
+.pwa-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-ink);
+}
+
+.pwa-status-bar.offline {
+  background: #3B4942;
+  color: #FAF7F0;
+}
+
+.pwa-status-bar.update {
+  background: linear-gradient(90deg, #2A483A 0%, #3E6B55 100%);
+  color: #FFF9EC;
+}
+
+.pwa-reload-btn {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1.5px solid #F4C476;
+  background: #F4C476;
+  color: #1E2B24;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pwa-reload-btn:hover {
+  filter: brightness(1.06);
+}
+
+/* =========================================================
+   ✨ P1-2 計時結束自動捲動＋金光脈衝引導打卡
+   ========================================================= */
+@keyframes painPromptGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(196, 137, 59, 0);
+    border-color: var(--border-ink);
+  }
+  30%, 70% {
+    box-shadow: 0 0 0 5px rgba(196, 137, 59, 0.35), 0 6px 20px rgba(196, 137, 59, 0.25);
+    border-color: var(--amber-gold);
+  }
+}
+
+.pain-log-section.pulse-highlight {
+  animation: painPromptGlow 1.15s ease-in-out 2;
+}
+
+/* =========================================================
+   👨‍👩‍👧‍👦 P2-1 家庭成員獨立檔案管理彈窗
+   ========================================================= */
+.profile-entry-btn {
+  border-color: rgba(42, 72, 58, 0.45);
+  background: var(--herb-soft);
+  color: var(--herb-deep);
+}
+
+.profile-list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-ink);
+  background: var(--bg-parchment);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.profile-item-card.active {
+  border-color: var(--herb-deep);
+  background: var(--herb-soft);
+}
+
+.profile-select-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 2px;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.profile-avatar {
+  font-size: 1.45rem;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-info strong {
+  font-size: 0.92rem;
+  color: var(--ink-dark);
+}
+
+.profile-info span {
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+}
+
+.profile-active-tag {
+  margin-left: 6px;
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--herb-deep);
+  color: #FFF;
+  vertical-align: middle;
+}
+
+[data-theme="dark"] .profile-active-tag {
+  color: #141B17;
+}
+
+.profile-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-role-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* =========================================================
+   ✨ P2-2 首次開啟 3 步快速新手導覽
+   ========================================================= */
+.onboarding-modal-card {
+  max-width: 480px;
+  background: var(--bg-card);
+  color: var(--ink-dark);
+  padding: 20px 22px;
+  text-align: center;
+}
+
+.onb-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.onb-step-badge {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--herb-deep);
+  background: var(--herb-soft);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.onb-hero-icon {
+  font-size: 3rem;
+  line-height: 1.1;
+  margin: 4px 0 10px;
+}
+
+.onb-title {
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  color: var(--herb-deep);
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+
+.onb-desc {
+  font-size: 0.88rem;
+  color: var(--ink-dark);
+  line-height: 1.65;
+  text-align: left;
+  margin: 0 0 12px;
+}
+
+.onb-tip {
+  background: var(--amber-soft);
+  border: 1px solid rgba(196, 137, 59, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 0.8rem;
+  color: var(--ink-dark);
+  text-align: left;
+  line-height: 1.5;
+}
+
+.onb-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin: 16px 0 14px;
+}
+
+.onb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-ink);
+  transition: all 0.2s ease;
+}
+
+.onb-dot.active {
+  width: 22px;
+  border-radius: 999px;
+  background: var(--herb-deep);
+}
+
+.onb-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+/* =========================================================
+   🖨️ P2-1 / P1-3 專屬 A4 單穴與整套處方單列印／PDF 樣式
+   ========================================================= */
+.preset-print-sheet {
+  display: none;
+}
+
 @media print {
   body {
     background: #FFFFFF !important;
@@ -3057,6 +3311,7 @@ body.modal-open {
     font-size: 11pt !important;
   }
 
+  .pwa-status-bar,
   .top-header,
   .filter-bar,
   .canvas-panel,
@@ -3105,6 +3360,97 @@ body.modal-open {
     border: 1px solid #BBB !important;
     background: #FAFAFA !important;
     color: #1A1A1A !important;
+  }
+
+  /* 🖨️ 整套處方 A4 處方單列印模式 */
+  body.printing-preset .main-workspace {
+    display: none !important;
+  }
+
+  body.printing-preset .preset-print-sheet {
+    display: block !important;
+    padding: 4mm 2mm;
+    color: #1A1A1A;
+  }
+
+  .pps-header {
+    border-bottom: 2px solid #2A483A;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .pps-header h1 {
+    margin: 0 0 4px;
+    font-size: 16pt;
+    color: #2A483A;
+  }
+
+  .pps-header p {
+    margin: 0;
+    font-size: 9.5pt;
+    color: #444;
+  }
+
+  .pps-alert {
+    border: 1.5px solid #B83D2E;
+    background: #FFF3F1;
+    color: #8A2519;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 9.5pt;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .pps-point-card {
+    border: 1px solid #C8C4B8;
+    border-radius: 6px;
+    padding: 9px 11px;
+    margin-bottom: 9px;
+    page-break-inside: avoid;
+  }
+
+  .pps-point-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px dashed #CCC;
+    padding-bottom: 5px;
+    margin-bottom: 6px;
+  }
+
+  .pps-point-head strong {
+    font-size: 12pt;
+    color: #2A483A;
+  }
+
+  .pps-meta {
+    font-size: 9pt;
+    color: #555;
+  }
+
+  .pps-preg-tag {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #B83D2E;
+    border: 1px solid #B83D2E;
+    padding: 1px 6px;
+    border-radius: 999px;
+  }
+
+  .pps-row {
+    font-size: 9.5pt;
+    line-height: 1.48;
+    margin-bottom: 3px;
+  }
+
+  .pps-footer {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #CCC;
+    font-size: 8.5pt;
+    color: #666;
   }
 }
 

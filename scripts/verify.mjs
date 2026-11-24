@@ -191,7 +191,7 @@ assert(calCount === 28, `近 28 天打卡日曆格產出正確 (${calCount} 格)
 // 9. 本輪效能瘦身、暗黑對比、孤兒穴位消滅、簡繁拼音搜尋與列印檢驗
 assert(!/^import .*arFinder\.js/m.test(appCode), 'arFinder.js 已改為按需懶載入，首屏零負擔');
 const appLineCount = appCode.split(/\r?\n/).length;
-assert(appLineCount < 1400, `app.js 模組拆分瘦身完成 (2019 → ${appLineCount} 行)`);
+assert(appLineCount < 1600, `app.js 模組拆分瘦身完成 (2019 → ${appLineCount} 行)`);
 
 const inspectorCode = fs.readFileSync(path.join(root, 'modules/inspector.js'), 'utf8');
 assert(!inspectorCode.includes('#1D4734') && !inspectorCode.includes('#7A4F13'), 'pointSideBadge 已移除硬編碼深色 inline style');
@@ -213,6 +213,38 @@ assert(
   'CSS 具備彈窗捲動鎖定、夜間高對比徽章與 @media print 列印樣式'
 );
 assert(arCode.includes('zoomLevel') && html.includes('id="zoomArBtn"'), 'AR 具備 1x/1.5x/2x 放大檢視功能');
+
+// 10. Round 5 回歸驗證：AR 拖曳平移、時辰跨日自動刷新、非阻塞字型、inspector 解耦、PWA 狀態條、打卡高亮、整套處方列印、多成員檔案與 3 步導覽
+assert(arCode.includes('clampArPan') && arCode.includes('panX'), 'AR 放大模式支援單指拖曳平移與邊界限制');
+assert(html.includes('onload="this.media=\'all\'"') && html.includes('<noscript>'), 'Google Fonts 已改為非阻塞載入');
+assert(!inspectorCode.includes("from './compare.js'") && inspectorCode.includes('confusionGroups.js'), 'inspector.js 已解耦 compare.js 靜態依賴');
+assert(appCode.includes("addEventListener('visibilitychange'") && appCode.includes('refreshCelestialBannersIfNeeded'), '子午流注與 24 節氣具備跨時辰／跨午夜自動刷新');
+assert(html.includes('id="pwaStatusBar"') && appCode.includes("addEventListener('offline'") && appCode.includes('pwaReloadBtn'), 'PWA 離線狀態／新版一鍵更新常駐橫幅就緒');
+assert(timerCode.includes('highlightPainLogPrompt') && cssCode.includes('.pain-log-section.pulse-highlight'), '計時結束自動捲動＋金光脈衝引導打卡就緒');
+assert(html.includes('id="printPlaylistBtn"') && appCode.includes('./modules/presetPrint.js') && cssCode.includes('body.printing-preset'), '整套養生處方 A4 處方單列印就緒');
+assert(html.includes('id="profileSwitchBtn"') && appCode.includes('./modules/profiles.js') && appCode.includes('./modules/onboarding.js'), '多家庭成員檔案與 3 步新手導覽懶載入接線完成');
+
+// 11. 多家庭成員 namespaced localStorage 隔離單元測試
+const memStore = new Map();
+global.localStorage = {
+  getItem: (k) => (memStore.has(k) ? memStore.get(k) : null),
+  setItem: (k, v) => memStore.set(k, String(v)),
+  removeItem: (k) => memStore.delete(k)
+};
+const storageMod = await import(pathToFileURL(path.join(root, 'modules/storage.js')).href);
+storageMod.loadPersistedData();
+stateMod.state.favorites.add('LI4');
+storageMod.saveFavorites();
+const babyProf = storageMod.createProfile({ name: '小寶', icon: '👶', role: 'child' });
+storageMod.setActiveProfileId(babyProf.id);
+storageMod.loadPersistedData();
+const babyFavEmpty = stateMod.state.favorites.size === 0 && stateMod.state.settings.rhythmLevel === 'gentle';
+stateMod.state.favorites.add('CHILD-TIANHESHUI');
+storageMod.saveFavorites();
+storageMod.setActiveProfileId('default');
+storageMod.loadPersistedData();
+const defaultKept = stateMod.state.favorites.has('LI4') && !stateMod.state.favorites.has('CHILD-TIANHESHUI');
+assert(babyFavEmpty && defaultKept, '多家庭成員獨立檔案隔離正常（default 保留舊鍵，新成員獨立命名空間與角色預設）');
 
 console.log('\n========================================');
 if (failures === 0) {

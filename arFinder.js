@@ -135,6 +135,8 @@ const arState = {
   footSide: 'right',         // 'left' | 'right' 腳底引導框左右腳切換
   earSide: 'right',          // 'left' | 'right' 耳廓引導框左右耳切換
   zoomLevel: 1,              // 🔍 定格／即時放大倍率：1 | 1.5 | 2
+  panX: 0,                   // 🔍 放大後水平平移像素偏移
+  panY: 0,                   // 🔍 放大後垂直平移像素偏移
   sessionToken: 0,           // 防併發啟動／中途關閉造成相機串流洩漏
   stream: null,
   rafId: null,
@@ -1688,11 +1690,34 @@ export function isArModalOpen() {
   return !!arState.isOpen;
 }
 
-function applyArZoomUI() {
+function clampArPan() {
+  const viewport = document.querySelector('.ar-viewport');
+  if (!viewport || arState.zoomLevel <= 1) {
+    arState.panX = 0;
+    arState.panY = 0;
+    return;
+  }
+  const rect = viewport.getBoundingClientRect();
+  const maxX = Math.max(0, (rect.width * (arState.zoomLevel - 1)) / 2);
+  const maxY = Math.max(0, (rect.height * (arState.zoomLevel - 1)) / 2);
+  arState.panX = Math.max(-maxX, Math.min(maxX, arState.panX));
+  arState.panY = Math.max(-maxY, Math.min(maxY, arState.panY));
+}
+
+function applyArZoomUI(instant = false) {
+  clampArPan();
   const stage = document.getElementById('arZoomStage');
+  const viewport = document.querySelector('.ar-viewport');
   const btn = document.getElementById('zoomArBtn');
   if (stage) {
-    stage.style.transform = arState.zoomLevel === 1 ? 'none' : `scale(${arState.zoomLevel})`;
+    stage.style.transition = instant ? 'none' : 'transform 0.2s ease';
+    stage.style.transform =
+      arState.zoomLevel === 1
+        ? 'none'
+        : `translate(${arState.panX.toFixed(1)}px, ${arState.panY.toFixed(1)}px) scale(${arState.zoomLevel})`;
+  }
+  if (viewport) {
+    viewport.classList.toggle('is-zoomed', arState.zoomLevel > 1);
   }
   if (btn) {
     btn.textContent = arState.zoomLevel === 1 ? '🔍 放大 1x' : `🔍 放大 ${arState.zoomLevel}x`;
@@ -1705,6 +1730,8 @@ export function closeArModal() {
   arState.isOpen = false;
   arState.isFrozen = false;
   arState.zoomLevel = 1;
+  arState.panX = 0;
+  arState.panY = 0;
   applyArZoomUI();
   if (arState.countdownTimer) {
     clearInterval(arState.countdownTimer);
@@ -1832,8 +1859,49 @@ export function initArControls(onSelectPointInMainApp) {
     const levels = [1, 1.5, 2];
     const nextIdx = (levels.indexOf(arState.zoomLevel) + 1) % levels.length;
     arState.zoomLevel = levels[nextIdx];
+    if (arState.zoomLevel === 1) {
+      arState.panX = 0;
+      arState.panY = 0;
+    }
     applyArZoomUI();
   });
+
+  // 放大至 1.5x / 2x 時支援單指拖曳平移看清畫面角落（P0-1）
+  const viewport = document.querySelector('.ar-viewport');
+  if (viewport) {
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    viewport.addEventListener('pointerdown', (e) => {
+      if (arState.zoomLevel <= 1) return;
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      viewport.setPointerCapture?.(e.pointerId);
+      viewport.classList.add('dragging');
+    });
+    viewport.addEventListener('pointermove', (e) => {
+      if (!dragging || arState.zoomLevel <= 1) return;
+      arState.panX += e.clientX - lastX;
+      arState.panY += e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      applyArZoomUI(true);
+    });
+    const endDrag = () => {
+      dragging = false;
+      viewport.classList.remove('dragging');
+    };
+    viewport.addEventListener('pointerup', endDrag);
+    viewport.addEventListener('pointercancel', endDrag);
+    viewport.addEventListener('dblclick', () => {
+      if (arState.zoomLevel > 1) {
+        arState.panX = 0;
+        arState.panY = 0;
+        applyArZoomUI();
+      }
+    });
+  }
 
   // 綁定前後鏡頭切換按鈕
   document.getElementById('flipCameraBtn')?.addEventListener('click', async () => {

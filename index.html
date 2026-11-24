@@ -13,10 +13,17 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <!-- 📡 PWA 離線狀態與新版本一鍵更新條（平時隱藏，P1-1） -->
+  <div id="pwaStatusBar" class="pwa-status-bar" style="display:none;" role="status" aria-live="polite">
+    <span id="pwaStatusText"></span>
+    <button type="button" id="pwaReloadBtn" class="pwa-reload-btn" style="display:none;">🔄 立即更新</button>
+  </div>
+
   <!-- 頂部導覽與子午流注 × 二十四節氣雙維度天時提示 -->
   <header class="top-header">
     <div class="brand-wrap">
@@ -43,6 +50,10 @@
 
         <button type="button" id="voiceControlBtn" class="util-pill-btn voice-pill-btn" title="開啟免手碰語音口令控制（推拿塗乳液免碰螢幕，支援說「開始/暫停/下一穴/換邊」）">
           🎙️ 語音
+        </button>
+
+        <button type="button" id="profileSwitchBtn" class="util-pill-btn profile-entry-btn" title="切換家庭成員獨立檔案（各自擁有獨立收藏、體質熱力圖、孕期鎖與字體設定）">
+          👤 我自己
         </button>
 
         <button type="button" id="openSettingsBtn" class="util-pill-btn settings-entry-btn" title="孕期安全鎖、深淺色主題、每日提醒時間、資料備份還原">
@@ -101,7 +112,10 @@
         <span id="playlistTitle" class="playlist-title">🌿 辦公室肩頸急救處方</span>
         <div id="playlistSteps" class="playlist-steps"></div>
       </div>
-      <div class="playlist-actions" style="display:flex; gap:8px; align-items:center;">
+      <div class="playlist-actions" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button type="button" id="printPlaylistBtn" class="util-pill-btn" style="background:rgba(255,255,255,0.16); color:#FFF; border-color:rgba(255,255,255,0.35);" title="列印或存成 PDF 整套處方 A4 圖解單，方便貼牆或給家人照著按">
+          🖨️ 印處方單
+        </button>
         <button type="button" id="sharePlaylistBtn" class="util-pill-btn" style="background:rgba(255,255,255,0.16); color:#FFF; border-color:rgba(255,255,255,0.35);" title="分享此處方給親友">
           🔗 分享處方
         </button>
@@ -542,10 +556,11 @@
 
       <div class="settings-section">
         <strong>💾 本機收藏、自訂處方與體質紀錄備份</strong>
-        <p class="settings-desc" style="margin-top:4px;">所有資料僅存於您的手機本機，換機或重裝瀏覽器前可一鍵匯出 JSON。</p>
+        <p class="settings-desc" style="margin-top:4px;">所有資料僅存於您的手機本機（含全部家庭成員獨立檔案），換機或重裝瀏覽器前可一鍵匯出 JSON。</p>
         <div class="reminder-controls-row" style="margin-top:8px;">
           <button type="button" id="backupExportBtn" class="util-pill-btn">📤 匯出備份 (.json)</button>
           <button type="button" id="backupImportBtn" class="util-pill-btn">📥 匯入還原</button>
+          <button type="button" id="openOnboardingBtn" class="util-pill-btn">❓ 新手功能指南</button>
           <input type="file" id="backupFileInput" accept=".json,application/json" style="display:none;" />
         </div>
       </div>

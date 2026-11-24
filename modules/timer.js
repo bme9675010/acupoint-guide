@@ -47,6 +47,19 @@ export function getEffectiveDurationSec(point) {
   return getEffectiveRhythm(point).totalDurationSec;
 }
 
+// 計時完成自動捲動並柔和脈動高亮「體感打卡區」（P1-2）
+function highlightPainLogPrompt() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById('zenModeModal')?.classList.contains('open')) return;
+  const sec = document.querySelector('.pain-log-section');
+  if (!sec) return;
+  sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  sec.classList.remove('pulse-highlight');
+  void sec.offsetWidth; // 重新觸發動畫
+  sec.classList.add('pulse-highlight');
+  setTimeout(() => sec.classList.remove('pulse-highlight'), 2600);
+}
+
 // 同步鏡像狀態至全螢幕沉浸模式（Zen Mode）
 function syncZenMirror({ phaseText, secText, totalText, ringClass, btnText }) {
   const zRing = document.getElementById('zenOrbRing');
@@ -181,6 +194,7 @@ export function toggleTimer({ skipInitialVoice = false } = {}) {
           playSingingBowl('press');
           vibrate('done');
           speakGuide('恭喜您完成整套養生處方按揉，請紀錄下方按後手感並喝溫水休息');
+          highlightPainLogPrompt();
           return 'stopped';
         }
       }
@@ -191,6 +205,7 @@ export function toggleTimer({ skipInitialVoice = false } = {}) {
       playSingingBowl('press');
       vibrate('done');
       speakGuide('按揉完成，請於下方點擊紀錄您的按後痛感');
+      highlightPainLogPrompt();
       return 'stopped';
     }
 

@@ -10,7 +10,7 @@ import {
 } from '../data/index.js';
 import { formatTime, getEffectiveRhythm } from './timer.js';
 import { updatePainLogAndConstitutionUI } from './painLogs.js';
-import { getConfusionGroupForPoint } from './compare.js';
+import { getConfusionGroupForPoint } from '../data/confusionGroups.js';
 import { escapeHtml } from './ui.js';
 
 let deps = {
